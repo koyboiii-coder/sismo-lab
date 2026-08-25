@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16
+    platform: linux/arm64
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sismos
+      POSTGRES_PASSWORD: sismos
+      POSTGRES_DB: sismos
+    volumes:
+      - /mnt/data/postgres:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sismos -d sismos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  daemon:
+    # For local dev this builds on the fly. Production on the Pi should
+    # instead pull a prebuilt image, per the buildx workflow in
+    # CLAUDE.md (build on another machine, push, then `image:` here).
+    build:
+      context: ../daemon
+      dockerfile: Dockerfile
+    platform: linux/arm64
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://sismos:sismos@postgres:5432/sismos
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
