@@ -40,3 +40,23 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  api:
+    # Same local-build-vs-Pi-pulls-a-prebuilt-image split as `daemon` above.
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    platform: linux/arm64
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://sismos:sismos@postgres:5432/sismos
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

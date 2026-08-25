@@ -15,6 +15,22 @@ from models import ParsedEvent
 logger = logging.getLogger(__name__)
 
 
+NOTIFY_CHANNEL = "seismic_events"
+
+
+async def _notify(conn: asyncpg.Connection, kind: str, cluster_key: uuid.UUID) -> None:
+    """Tells api/ a cluster was created or revised, so its SSE stream can
+    push it instead of polling. Payload is deliberately just the id, not the
+    full event -- see api/notifier.py for why. Issued inside the caller's
+    transaction, so Postgres only delivers it once that transaction commits
+    and the row is actually visible to the listener's re-fetch."""
+    await conn.execute(
+        "SELECT pg_notify($1, $2)",
+        NOTIFY_CHANNEL,
+        json.dumps({"type": kind, "cluster_key": str(cluster_key)}),
+    )
+
+
 def _parsed_unchanged(existing_row: asyncpg.Record, parsed: ParsedEvent) -> bool:
     """Compares parsed fields, not the raw payload: sources re-send the
     same report with only a bookkeeping timestamp bumped (CSN's
@@ -194,6 +210,7 @@ class Writer:
         await self._insert_report(
             conn, event_id, source, source_event_id, payload, parsed, received_at
         )
+        await _notify(conn, "insert", cluster_key)
         logger.info(
             "[%s] new cluster %s: mag=%s depth=%s region=%s",
             source,
@@ -293,6 +310,7 @@ class Writer:
             canonical["region"],
             canonical["preferred_source"],
         )
+        await _notify(conn, "update", row["cluster_key"])
         logger.info(
             "[%s] merged into cluster %s (sources=%s, rev=%s): "
             "mag=%s depth=%s lat=%s lon=%s region=%s preferred=%s",
