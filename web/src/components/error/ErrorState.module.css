@@ -1,0 +1,73 @@
+.barraGris {
+  filter: grayscale(1);
+}
+
+.cuerpo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-5);
+  padding: var(--sp-8);
+  text-align: center;
+}
+
+.sinDatoCifra {
+  font-size: 96px;
+  font-weight: 800;
+  color: var(--degradado);
+}
+
+.sinDatoEtiqueta {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--degradado);
+  text-transform: uppercase;
+}
+
+.mensajeCentral {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin: var(--sp-6) 0;
+}
+
+.filasFuente {
+  display: flex;
+  gap: var(--sp-8);
+}
+
+.filaFuente {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.puntoAmbar {
+  width: 10px;
+  height: 10px;
+  background: var(--degradado);
+}
+
+.sigla {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.etiquetaSinDato {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--degradado);
+  letter-spacing: 0.08em;
+}
+
+.reintento {
+  margin-top: var(--sp-5);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--tinta-4);
+}

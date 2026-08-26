@@ -1,0 +1,225 @@
+.velo {
+  position: fixed;
+  inset: 0;
+  background: var(--velo);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 100;
+}
+
+.ventana {
+  position: absolute;
+  left: 230px;
+  top: 180px;
+  width: 1460px;
+  background: var(--panel);
+  border: 2px solid var(--alerta);
+  box-shadow: 0 0 0 12px var(--halo-alerta);
+}
+
+.cabecera {
+  height: 96px;
+  background: var(--alerta);
+  color: #171615;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: 0 var(--sp-7);
+}
+
+.puntoPulsante {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #171615;
+  animation: pulse-dot 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.titulo {
+  font-size: 38px;
+  font-weight: 800;
+}
+
+.relleno {
+  flex: 1;
+}
+
+.hace {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.bloqueDatos {
+  display: grid;
+  grid-template-columns: 520px 1fr;
+  border-bottom: var(--divisor-fuerte) solid var(--div-fuerte);
+}
+
+.celdaMagnitud {
+  padding: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  border-right: var(--divisor-fuerte) solid var(--div-fuerte);
+}
+
+.celdaIntensidad {
+  padding: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.etiquetaPequena {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--tinta-4);
+}
+
+.filaM {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+}
+
+.etiquetaM {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--tinta-4);
+}
+
+.cifraM {
+  font-size: 196px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.84;
+}
+
+.fuentesConfirman {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.filaMmi {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+}
+
+.cifraMmi {
+  font-size: 112px;
+  font-weight: 800;
+  color: var(--alerta);
+  line-height: 1;
+}
+
+.etiquetaMercalli {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--tinta-3);
+}
+
+.fraseMmi {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--tinta-2);
+  text-wrap: pretty;
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: var(--divisor-fuerte) solid var(--div-fuerte);
+}
+
+.celdaRejilla {
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-left: var(--divisor-suave) solid var(--div-suave);
+}
+
+.celdaRejilla:first-child {
+  border-left: none;
+}
+
+.etiquetaCelda {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--tinta-4);
+}
+
+.epicentro {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.valorRejilla {
+  font-size: 64px;
+  font-weight: 800;
+}
+
+.pie {
+  background: var(--panel-alto);
+  padding: 22px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.textoCierre {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.barraProgreso {
+  height: 6px;
+  background: var(--div-fuerte);
+}
+
+.barraProgresoRelleno {
+  height: 100%;
+  background: var(--alerta);
+  transition: width 1s linear;
+}
+
+.boton {
+  align-self: flex-start;
+  border: 2px solid var(--tinta);
+  padding: 12px 22px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  min-height: 44px;
+}
+
+.notasPie {
+  position: absolute;
+  top: 840px;
+  left: 230px;
+  width: 1460px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  border-top: 2px solid var(--div-fuerte);
+  padding-top: var(--sp-4);
+}
+
+.notaAmbar {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--degradado);
+}
+
+.notaNeutra {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tinta-3);
+}

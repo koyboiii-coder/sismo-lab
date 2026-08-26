@@ -42,7 +42,11 @@ up -d --build daemon` fuerza el rebuild y de paso el restart — más lento pero
 elimina la duda.
 
 Lo mismo aplica en principio para `api/`, pero `docker-compose.override.yml`
-hoy solo monta `daemon/` (ver ese archivo si hace falta extenderlo).
+hoy solo monta `daemon/` y `web/` (ver ese archivo si hace falta
+extenderlo). `web/` es la excepción: `next dev` ya trae su propio hot
+reload, así que ahí ni reinicio ni rebuild hacen falta por archivo
+editado -- ver [`web/README.md`](web/README.md) para cómo forzar cada
+pantalla del dashboard sin backend.
 
 ### Por qué no está esto en producción
 

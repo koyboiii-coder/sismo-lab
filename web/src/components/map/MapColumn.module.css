@@ -1,0 +1,11 @@
+.columna {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mapaContenedor {
+  flex: 1;
+  overflow: hidden;
+}

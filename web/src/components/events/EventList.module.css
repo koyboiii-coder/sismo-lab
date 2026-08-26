@@ -1,0 +1,201 @@
+.columna {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.encabezadoTabla {
+  height: 34px;
+  display: grid;
+  grid-template-columns: 6px minmax(56px, 104px) minmax(64px, 116px) minmax(160px, 1fr) minmax(48px, 108px) minmax(110px, 168px);
+  column-gap: var(--sp-4);
+  align-items: center;
+  padding-right: 24px;
+  padding-left: var(--sp-6);
+  border-bottom: var(--divisor-suave) solid var(--div-suave);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--tinta-4);
+}
+
+.encabezadoDerecha {
+  text-align: right;
+}
+
+.filas {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sinEventos {
+  padding: var(--sp-6);
+  font-size: 14px;
+  color: var(--tinta-4);
+  letter-spacing: 0.08em;
+}
+
+.fila {
+  height: var(--alto-fila-evento);
+  display: grid;
+  grid-template-columns: 6px minmax(56px, 104px) minmax(64px, 116px) minmax(160px, 1fr) minmax(48px, 108px) minmax(110px, 168px);
+  align-items: center;
+  column-gap: var(--sp-4);
+  padding-right: 24px;
+  border-bottom: var(--divisor-suave) solid var(--div-suave);
+}
+
+/* Orden de prioridad al angostarse (columna B, no el viewport -- ver
+   container-type en NormalLayout.module.css): profundidad es la única
+   columna puramente decorativa (ya se repite como color de fondo del
+   cuadradito y como dato secundario en otras vistas), así que es la
+   primera en desaparecer del todo. Lugar y distancia nunca se ocultan:
+   solo ceden ancho (minmax de arriba) hasta su piso definido ahí. */
+@container (max-width: 620px) {
+  .encabezadoTabla,
+  .fila {
+    grid-template-columns: 6px minmax(56px, 104px) minmax(64px, 116px) minmax(160px, 1fr) minmax(110px, 168px);
+  }
+
+  .colProfundidad,
+  .celdaProfundidad {
+    display: none;
+  }
+}
+
+.filaDestacada {
+  background: var(--panel);
+}
+
+.barraSeveridad {
+  width: 6px;
+  height: 46px;
+  justify-self: start;
+  margin-left: var(--sp-6);
+}
+
+.filaDestacada .barraSeveridad {
+  height: 66px;
+}
+
+.colHora {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.horaCorta {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.metadato {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--tinta-4);
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.colMagnitud {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-1);
+}
+
+.mLabel {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tinta-4);
+}
+
+.magnitudGrande {
+  font-size: 34px;
+  font-weight: 800;
+}
+
+.magnitudGrandeSentido {
+  font-size: 38px;
+  font-weight: 800;
+}
+
+.colLugar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lugarLinea {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.lugar {
+  font-size: 21px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.etiquetaZona {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border: 1px solid var(--degradado);
+  color: var(--degradado);
+  letter-spacing: 0.08em;
+}
+
+.colProfundidad {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.cuadradoProfundidad {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+.profundidadValor {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.colDistancia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.distancia {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--tinta-2);
+}
+
+.distanciaSentida {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--tinta);
+}
+
+.distanciaSinUbicar {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--degradado);
+  letter-spacing: 0.08em;
+}

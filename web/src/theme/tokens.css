@@ -1,0 +1,124 @@
+/*
+ * Tokens de diseño -- docs/design/handoff.md sección 2. Paleta cerrada:
+ * no agregar colores nuevos aquí ni usar hex sueltos en componentes.
+ * El significado del color es semántico y estricto (ver handoff §2,
+ * "Reglas semánticas"): rojo = evento sísmico significativo, nunca error;
+ * ámbar = el sistema no es confiable, nunca decorativo.
+ */
+:root {
+  --fondo: #171615;
+  --fondo-lienzo: #0c0b0b;
+  --panel: #1c1a19;
+  --panel-alto: #211f1d;
+
+  --tinta: #e8e4e1;
+  --tinta-2: #c9c4c0;
+  --tinta-3: #a29c97;
+  --tinta-4: #6f6a66;
+
+  --div-fuerte: #35322f;
+  --div-suave: #2a2725;
+
+  /* Peso de severidad en la lista de eventos -- sin color, ver §2 regla 3 */
+  --barra-1: #e8e4e1;
+  --barra-2: #6b645e;
+  --barra-3: #4a4540;
+  --barra-4: #423d39;
+
+  --alerta: #ff563c;
+  --degradado: #ffb43a;
+  --nominal: #3fb9a6;
+  --profundo: #6a86d8;
+
+  --halo-alerta: rgba(255, 86, 60, 0.1);
+  --velo: rgba(12, 11, 11, 0.82);
+
+  /* Escala de espaciado -- handoff §2 */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+  --sp-9: 56px;
+
+  --radio: 0px;
+  --divisor-fuerte: 2px;
+  --divisor-suave: 1px;
+
+  /* Estructura fija -- handoff §3 */
+  --alto-barra-superior: 76px;
+  --alto-cabecera-panel: 44px;
+  --alto-fila-evento: 90px;
+  /* clamp(), no un px fijo: por debajo de 1920px de ancho de ventana (el
+     target es fijo, pero se necesita poder revisar el diseño en un
+     navegador de escritorio más angosto durante desarrollo -- ver
+     CLAUDE.md) el mapa y la columna de estado ceden espacio primero para
+     que la lista de eventos (columna B, "1fr" en .cuerpo) nunca sea la
+     que se quede sin ancho. En 1920px da prácticamente el mismo valor de
+     siempre (520/400); no cambia nada en el target real. */
+  --ancho-col-mapa: clamp(300px, 27vw, 520px);
+  --ancho-col-estado: clamp(230px, 21vw, 400px);
+
+  /* --font-archivo lo define next/font/google via className en layout.tsx */
+  --font-tabular: var(--font-archivo), system-ui, sans-serif;
+}
+
+/*
+ * Ajuste nocturno (handoff §5.1: "23:00-07:00 ... 45% de brillo"). Se
+ * activa agregando data-noche="true" al <html> desde useNightMode -- un
+ * filtro de brillo, no un tema de color nuevo (la paleta no cambia).
+ */
+:root[data-noche="true"] {
+  filter: brightness(0.45);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overflow-y: hidden; /* handoff: "sin scroll" -- el layout siempre calza en 1920x1200 */
+  /* overflow-x sí puede aparecer, pero solo por debajo de ~1200px de
+     ancho (ver min-width en Dashboard.module.css): ese rango ya no se
+     soporta con columnas -- es preferible un scroll horizontal explícito
+     a que el contenido se solape y se vea roto. En el target real
+     (1920px) nunca aparece. */
+  overflow-x: auto;
+}
+
+body {
+  background: var(--fondo);
+  color: var(--tinta);
+  font-family: var(--font-tabular);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.mayusculas {
+  text-transform: uppercase;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}

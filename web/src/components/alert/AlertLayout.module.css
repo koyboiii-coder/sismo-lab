@@ -1,0 +1,272 @@
+.pantalla {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.franjaSuperior {
+  height: 72px;
+  flex-shrink: 0;
+  background: var(--alerta);
+  color: #171615;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: 0 var(--sp-7);
+}
+
+.tituloFranja {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.separadorOscuro {
+  width: 2px;
+  height: 30px;
+  background: rgba(23, 22, 21, 0.4);
+}
+
+.detalleFranja {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.rellenoFranja {
+  flex: 1;
+}
+
+.fuentesFranja {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.cuerpo {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 720px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.panelIzquierdo {
+  padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  overflow: hidden;
+  border-right: var(--divisor-fuerte) solid var(--div-fuerte);
+}
+
+.filaHero {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-8);
+}
+
+.bloqueMagnitud {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+}
+
+.etiquetaM {
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--tinta-4);
+}
+
+.cifraHero {
+  font-size: 288px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.82;
+}
+
+.bloqueIntensidad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-width: 460px;
+}
+
+.etiquetaIntensidad {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--tinta-4);
+}
+
+.filaMmi {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+}
+
+.cifraMmi {
+  font-size: 104px;
+  font-weight: 800;
+  color: var(--alerta);
+  line-height: 1;
+}
+
+.etiquetaMercalli {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--tinta-3);
+}
+
+.fraseMmi {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--tinta-2);
+  text-wrap: pretty;
+}
+
+.notaSaturada {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--degradado);
+}
+
+.cajaPreliminar {
+  border: 2px solid var(--alerta);
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.bloqueEpicentro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.etiquetaEpicentro {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--tinta-4);
+}
+
+.textoEpicentro {
+  font-size: 60px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.coordenadas {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--tinta-3);
+}
+
+.pieCeldas {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: var(--divisor-suave) solid var(--div-suave);
+  padding-top: var(--sp-4);
+}
+
+.celdaPie {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: var(--divisor-suave) solid var(--div-suave);
+  padding-left: var(--sp-4);
+}
+
+.celdaPie:first-child {
+  border-left: none;
+  padding-left: 0;
+}
+
+.etiquetaCelda {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--tinta-4);
+}
+
+.valorCelda {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.subCelda {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tinta-3);
+}
+
+.panelDerecho {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--sp-5);
+  gap: var(--sp-4);
+}
+
+.cabeceraDerecha {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cabeceraDerecha > span:first-child {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.subCabeceraDerecha {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--tinta-4);
+}
+
+.historial {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.tituloHistorial {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--tinta-4);
+}
+
+.cargandoHistorial {
+  font-size: 12px;
+  color: var(--tinta-4);
+}
+
+.filaHistorial {
+  display: flex;
+  gap: var(--sp-4);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tinta-2);
+  padding: 4px 0;
+  border-bottom: var(--divisor-suave) solid var(--div-suave);
+}
+
+.reglaSalida {
+  margin-top: auto;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--tinta-4);
+  border-top: var(--divisor-suave) solid var(--div-suave);
+  padding-top: var(--sp-3);
+}

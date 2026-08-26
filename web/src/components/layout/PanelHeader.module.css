@@ -1,0 +1,44 @@
+.cabecera {
+  height: var(--alto-cabecera-panel);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: 0 var(--sp-5);
+  border-bottom: var(--divisor-fuerte) solid var(--div-fuerte);
+  overflow: hidden;
+}
+
+.titulo {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dato {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--tinta-4);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Es el dato secundario de la cabecera (p. ej. "ORDEN CRONOLÓGICO
+   INVERSO") -- el primero en ceder espacio cuando el panel se angosta.
+   @container, no @media: cada columna del layout (mapa/eventos/estado)
+   tiene su propio ancho (ver container-type en NormalLayout.module.css),
+   así que lo que importa es cuánto espacio le queda A ESA columna, no al
+   viewport completo. */
+@container (max-width: 420px) {
+  .dato {
+    display: none;
+  }
+}

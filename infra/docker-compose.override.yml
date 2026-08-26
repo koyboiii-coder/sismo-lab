@@ -22,3 +22,23 @@ services:
       # container runs as root, so cache files it writes there would end up
       # root-owned on the host otherwise.
       PYTHONDONTWRITEBYTECODE: "1"
+
+  web:
+    # A diferencia de `daemon`, esto no solo bind-mountea sino que
+    # reemplaza el comando: `next dev` ya trae hot reload propio (no hace
+    # falta reiniciar el proceso como con el daemon), pero necesita
+    # node_modules instalado -- se corre `npm install` una vez al levantar
+    # si falta, para no tener que reconstruir la imagen por cada cambio de
+    # dependencias tampoco en dev.
+    build:
+      target: deps
+    working_dir: /app
+    volumes:
+      - ../web:/app
+      - web_node_modules:/app/node_modules
+    # API_INTERNAL_URL se hereda de docker-compose.yml (http://api:8000) --
+    # sigue siendo correcto en dev, mismo servicio en la misma red.
+    command: sh -c "npm install && npx next dev -H 0.0.0.0"
+
+volumes:
+  web_node_modules:

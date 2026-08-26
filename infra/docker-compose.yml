@@ -55,6 +55,16 @@ services:
       NTFY_URL: http://ntfy:80
       NTFY_TOPIC: sismos
       NTFY_TOKEN: ${NTFY_TOKEN:-}
+      # Ubicación real de la casa -- ver daemon/config.py (GMPE) y
+      # api/config.py (expuesta de solo lectura en GET /api/config para
+      # web/). Un solo lugar (infra/.env, gitignored) para no
+      # desincronizar el cálculo del daemon con lo que ve el dashboard.
+      # Sin default: `:?` hace que `docker compose up` falle de inmediato
+      # si infra/.env no las trae, en vez de arrancar silenciosamente
+      # contra un placeholder equivocado (daemon/config.py también lo
+      # exige por su cuenta, para quien corra el daemon fuera de compose).
+      HOME_LAT: ${HOME_LAT:?falta HOME_LAT en infra/.env}
+      HOME_LON: ${HOME_LON:?falta HOME_LON en infra/.env}
     volumes:
       - ./postgres/init:/migrations:ro
     depends_on:
@@ -117,11 +127,43 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://sismos:sismos@postgres:5432/sismos
+      # Mismos valores que `daemon` arriba -- ver ese comentario, incluido
+      # el `:?` (sin default). HOME_LABEL es puramente de presentación
+      # (barra superior de web/), sin equivalente en el daemon.
+      HOME_LAT: ${HOME_LAT:?falta HOME_LAT en infra/.env}
+      HOME_LON: ${HOME_LON:?falta HOME_LON en infra/.env}
+      HOME_LABEL: ${HOME_LABEL:-Casa}
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    # Same local-build-vs-Pi-pulls-a-prebuilt-image split as `daemon`/`api`
+    # above.
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    platform: linux/arm64
+    restart: unless-stopped
+    environment:
+      # El SERVIDOR de Next.js reescribe /api/* hacia acá (ver
+      # web/next.config.ts) -- el navegador de la tablet nunca ve esta URL,
+      # solo habla con el propio origen de Next.js (puerto 3000). Por eso
+      # el nombre del servicio Docker "api" sí funciona acá, a diferencia
+      # del extinto NEXT_PUBLIC_API_URL que tenía que resolver desde la
+      # LAN de la tablet.
+      API_INTERNAL_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
     logging:
       driver: json-file
       options:

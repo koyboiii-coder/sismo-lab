@@ -1,0 +1,15 @@
+.escala {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.celda {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.celdaActiva {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--alerta);
+}

@@ -1,0 +1,63 @@
+.bloque {
+  background: var(--panel-alto);
+  padding: 18px var(--sp-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-6);
+  border-bottom: var(--divisor-fuerte) solid var(--div-fuerte);
+}
+
+.sinDato {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--tinta-4);
+}
+
+.izquierda {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+
+.hace {
+  font-size: 46px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.separador {
+  width: var(--divisor-fuerte);
+  align-self: stretch;
+  background: var(--div-fuerte);
+}
+
+.resumen {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--tinta-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.derecha {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.etiquetaRacha {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--tinta-4);
+}
+
+.racha {
+  font-size: 26px;
+  font-weight: 700;
+}

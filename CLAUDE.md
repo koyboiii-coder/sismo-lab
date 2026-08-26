@@ -219,11 +219,13 @@ Al actualizar un evento existente: incrementar `revision`, actualizar
 
 ## Motor de reglas
 
-Configuración en `.env`:
+Configuración en `infra/.env` (obligatoria, sin default -- ver "Sin
+default de ubicación en silencio" más abajo):
 
 ```
-HOME_LAT=-36.8270      # ajustar a la ubicación exacta
-HOME_LON=-73.0498
+HOME_LAT=-36.633544    # Coihueco, Región de Ñuble
+HOME_LON=-71.829477
+HOME_LABEL=Coihueco
 ```
 
 Pipeline de cálculo:
@@ -306,7 +308,7 @@ docker buildx build --platform linux/arm64 -t ghcr.io/<user>/sismos-daemon:lates
 
 - [ ] **Fase 1** — `daemon/`: ingesta de las 3 fuentes, deduplicación, persistencia
 - [ ] **Fase 2** — `api/`: REST + SSE
-- [ ] **Fase 3** — `web/`: dashboard según diseño
+- [x] **Fase 3** — `web/`: dashboard según diseño
 - [ ] **Fase 4** — `infra/`: compose, Caddy, systemd, healthchecks
 - [~] **Fase 5** — notificaciones: ntfy hecho, MQTT/Home Assistant pendiente
 - [ ] **Futuro** — SeedLink: detección propia sobre forma de onda de estaciones
@@ -352,9 +354,182 @@ decisiones no obvias que se hayan tomado.
   ambos son páginas pensadas para humanos, sin JSON/RSS consultable); la
   notificación simplemente enlaza a snamchile.cl y menciona SENAPRED en vez
   de intentar un scraper frágil para una decisión de evacuación.
-- **UI (Fase 3) todavía no existe**: el pedido de un texto permanente
-  aclarando "informativo post-evento, no alerta temprana" quedó pendiente
-  de esa fase — no hay `web/` ni diseño en `docs/design/` todavía. Los
-  campos que ese texto necesitaría ya están expuestos por la API
-  (`alert_level_sent` vía el estado del evento, `intensity_geometry_source`,
-  `intensity_distance_saturated`).
+- **UI (Fase 3): implementada en `web/`**, ver la sección de decisiones más
+  abajo. El texto permanente "informativo post-evento, no alerta
+  temprana" ya está en el pie del aviso emergente
+  (`web/src/components/alert/AvisoPopup.tsx`).
+
+### Decisiones no obvias — dashboard (fase 3, `web/`)
+
+- **`docs/design/handoff.md` §7 (contrato de datos) es de la maqueta, no
+  de la API real.** La API de fases 1-2 entrega filas crudas de `events`
+  (ver `api/notifier.py:serialize_event`), no el `Evento`/`Estado`
+  idealizado del handoff. Todo lo derivado — rumbo, nivel de aviso,
+  resumen 48h, sentidos 90 días — se calcula en el cliente
+  (`web/src/lib/derive.ts`, `web/src/state/`), no en el backend. El nivel
+  de aviso (escalera 1/2/3 del handoff §5.1) se deriva de
+  `estimated_mmi` solamente, no de umbrales de magnitud+distancia por
+  separado: el backend ya resume ambas cosas en un único número vía su
+  GMPE, reimplementar el umbral en el cliente sería una segunda fuente de
+  verdad que puede desincronizarse de la real.
+- **Next.js, no Vite** (el prompt del propio handoff sugería Vite):
+  se mantuvo la invariante ya escrita en este archivo. Todo cliente, sin
+  SSR real — el REST inicial y el SSE corren en el navegador de la tablet,
+  no en el proceso de Next.js.
+- **Dos adiciones mínimas a `api/`**, ambas de solo lectura: `GET
+  /api/config` (expone `HOME_LAT`/`HOME_LON`/`HOME_LABEL`, que ya
+  calculaba el daemon pero no se exponían) y el filtro `?significant=true`
+  en `GET /api/events` (para pedir 90 días de "sentidos aquí" sin traer
+  cada sismo chico de ese período). Ver `api/routers/config.py`,
+  `api/routers/events.py`.
+- **Mapa de Chile sin maqueta portada**: `Monitor Sismico.dc.html` /
+  `seismic-map.js`, referenciados por el handoff, no están en el repo. El
+  contorno nacional sale de `world-atlas` (Natural Earth, dominio
+  público), recortado una sola vez a Chile por
+  `web/scripts/build-chile-map-data.mjs` en `web/src/data/chile.geo.json`
+  — no se le manda a la tablet el atlas mundial completo.
+- **"N de 3 fuentes confirman" solo se pide para el evento activo en
+  aviso/alerta** (`GET /api/events/{cluster_key}`), no para las 8 filas de
+  la lista normal, para no hacer un fetch extra por fila cada 30 s.
+- **Réplicas para la salida de "alerta" (20 min sin M≥3.5, handoff §4)**:
+  sin clustering espacial en el cliente — cualquier evento M≥3.5
+  significativo posterior al inicio de la ventana extiende la salida. Es
+  conservador a propósito: en una secuencia activa mantiene la pantalla en
+  alerta un poco más de lo necesario, nunca menos.
+- **Dos textos del handoff se omitieron a propósito**, por contradecir
+  reglas ya escritas en este archivo en vez de reproducir el mockup
+  literal: no se muestra una "próxima revisión" a una hora fija (las
+  fuentes no publican en un horario conocido) ni una estimación de
+  llegada de onda S ("Alertas por proximidad, no por anticipación" arriba
+  es explícito en que no hay ventana de anticipación real).
+- **No se pudo verificar visualmente en navegador** — el entorno de esta
+  sesión no tenía un browser real disponible para probar. Verificado en
+  su lugar: `tsc --noEmit`, `next lint` y `next build` limpios, y las 5
+  pantallas (`?escenario=normal|aviso2|aviso3|alerta|error`, ver
+  `web/README.md`) responden 200 sin errores de servidor tanto en `next
+  start` como en la imagen Docker final. Falta una revisión visual real
+  en la tablet o un navegador antes de dar la fase por completamente
+  cerrada.
+
+### Decisiones no obvias — conectividad del dashboard y ubicación (sesión posterior a fase 3)
+
+- **`/api/*` vía proxy de Next.js, no `NEXT_PUBLIC_API_URL`**: el
+  navegador de la tablet (o cualquier PC en la LAN) solo habla con el
+  propio origen de `web/` (puerto 3000), que reenvía hacia
+  `API_INTERNAL_URL` (el nombre del servicio Docker `api`, solo resuelve
+  dentro de la red de compose — ver `infra/docker-compose.yml`). El diseño
+  anterior horneaba `NEXT_PUBLIC_API_URL` en el bundle del cliente en build
+  time con default `http://localhost:8000`; como "localhost" desde el
+  navegador de cualquier dispositivo que no fuera la propia Pi apunta al
+  dispositivo mismo, `/api/*` fallaba con `net::ERR_*` desde la tablet y
+  desde cualquier PC — el backend estaba sano, el cliente apuntaba mal. El
+  proxy también evita tener que configurar CORS.
+  - **Route Handler (`web/src/app/api/[...path]/route.ts`), no
+    `rewrites()` en `next.config.ts`**: `rewrites()` resuelve su
+    `destination` en build time — con `API_INTERNAL_URL` sin definir
+    durante `docker build` (docker-compose solo la pasa como `environment`
+    en runtime, nunca como build arg), la imagen quedaba con
+    `http://localhost:8000` horneado sin importar el ENV real del
+    contenedor, y el proxy fallaba con `ECONNREFUSED 127.0.0.1:8000` pese a
+    que `API_INTERNAL_URL=http://api:8000` era correcta en runtime
+    (`docker compose exec web env` la mostraba bien — el bug estaba en
+    cuándo se leía, no en su valor). El Route Handler lee
+    `process.env.API_INTERNAL_URL` en cada request, así que la misma
+    imagen sirve en cualquier entorno sin reconstruirla.
+  - Verificado que `/api/stream` (SSE) sigue sin bufferearse a través del
+    Route Handler: contra un backend con framing por chunks real (igual al
+    `StreamingResponse` de starlette/uvicorn), los ticks llegan al cliente
+    espaciados como el backend los emite, no todos juntos al final. Un
+    cierre ordenado del backend (`res.end()`) termina el stream del
+    cliente con normalidad; un cierre abrupto (`socket.destroy()`,
+    simulando que cae el contenedor de `api`) se propaga como error de
+    conexión de inmediato en vez de dejar el fetch colgado — el cliente
+    (`web/src/lib/sse.ts`) lo ve como el `error` nativo de `EventSource` y
+    reconecta con su backoff ya existente, sin depender del watchdog de
+    40 s. (Un mock inicial con `http.server` de Python en HTTP/1.0, sin
+    `Transfer-Encoding: chunked`, sí dejaba el fetch de Node colgado
+    indefinidamente al cerrar la conexión — es una limitación de cómo
+    undici interpreta el cierre de un socket HTTP/1.0 sin framing
+    explícito, no representativa del backend real, que siempre habla
+    HTTP/1.1 con chunks.)
+- **Sin default de ubicación en silencio**: `HOME_LAT`/`HOME_LON` ya no
+  tienen valor por defecto en `daemon/config.py` ni `api/config.py` (antes
+  caían en un placeholder de Concepción, `-36.8270,-73.0498`, que nunca
+  fue la ubicación real) — falta cualquiera de las dos y el proceso
+  levanta una `RuntimeError` al iniciar. `infra/docker-compose.yml` usa
+  `${HOME_LAT:?...}` (sin default), así que `docker compose up` falla de
+  inmediato si `infra/.env` no las trae, antes incluso de levantar
+  contenedores. En el frontend, `web/src/components/Dashboard.tsx` ya no
+  usa un fallback con coordenadas reales (antes eran las de Santiago,
+  `-33.457,-70.601`, mostradas como si fueran datos mientras `/api/config`
+  no cargaba o fallaba) — mientras la config no llega, se muestra un
+  estado de carga genuino sin cifras, y `TopBar`/`ErrorState` aceptan
+  `homeLat`/`homeLon` nulos para mostrar "ubicación no disponible" en vez
+  de una posición fabricada. Motivo: un número con pinta de coordenada
+  real es indistinguible de un dato real para quien mira el dashboard —
+  el mismo principio que "la UI nunca debe mostrar datos viejos como si
+  fueran actuales" (sección Frontend), aplicado a la ubicación.
+- **`daemon/recompute.py` corrido una vez tras fijar `HOME_LAT`/`HOME_LON`
+  reales** (Coihueco, Región de Ñuble): todo evento guardado hasta ahora
+  tenía `distance_km`/`estimated_pga`/`estimated_mmi`/`is_significant`
+  calculados contra el placeholder de Concepción, no la ubicación real —
+  ver el resultado del run para el conteo de eventos corregidos.
+
+### Decisiones no obvias — `?escenario=alerta` en blanco, badge de "sentido" y layout angosto (sesión posterior a fase 3)
+
+- **La causa de `?escenario=alerta` era un loop de render infinito, no un
+  fixture con forma equivocada.** `Dashboard.tsx` llamaba
+  `construirEscenario(nombreEscenario)` directo en el cuerpo del
+  componente, sin `useMemo`; para "aviso2"/"aviso3"/"alerta",
+  `fixtures/scenarios.ts` arma el array de eventos con spread
+  (`[evento, ...EVENTOS_BASE]`), una referencia nueva en cada llamada
+  (a diferencia de "normal"/"error", que reusan la constante
+  `EVENTOS_BASE` tal cual). `useAvisoMachine.ts` ajusta su estado
+  comparando `eventos !== eventosProcesados` durante el render -- un
+  patrón que React solo soporta si esa referencia eventualmente se
+  vuelve estable. Como nunca lo hacía, cada render disparaba otro
+  render con una referencia distinta de nuevo, sin converger, hasta que
+  React lo corta con "Too many re-renders" y Next reemplaza toda la
+  pantalla por su fallback genérico ("This page couldn't load"). Se
+  reprodujo aislado (fuera de Next, con `react-dom/server` + una copia
+  mínima de la lógica) antes de tocar el código, para no perseguir un
+  diagnóstico equivocado -- confirmado que memoizar `escenario` con
+  `useMemo(..., [nombreEscenario])` lo resuelve. Quedaba latente también
+  en aviso2/aviso3 aunque no se hubiera notado ahí todavía.
+- **`AlertErrorBoundary` envuelve solo `<AlertLayout>`**, no todo
+  `Dashboard`: por diseño no captura el bug de arriba (el throw ocurre
+  antes, dentro del hook, no en el subárbol de AlertLayout), pero sí
+  cualquier falla futura específica de esa pantalla -- durante un sismo
+  real, magnitud/distancia/MMI a medias es mejor que la pantalla en
+  blanco de Next. El fallback recibe `evento` por prop, no lo lee del
+  subárbol que falló.
+- **`sentidoEnLaZona` (badge "SENTIDO EN LA ZONA" en `EventRow.tsx`) ahora
+  exige `enChile(evento)` además de M≥4.0.** La lista de columna B mezcla
+  actividad nacional con sismos mundiales M6.5+ (CLAUDE.md, "sin alerta
+  local" -- ver `EVENTOS_BASE` en fixtures, que ya incluye dos de esos).
+  Sin el filtro, cualquier evento mundial grande mostraba la etiqueta
+  como si fuera relevante (caso real: M en Afganistán, 16.700 km, MMI I
+  aquí). "Zona" se refiere al entorno del epicentro, no a HOME, pero un
+  evento fuera de Chile no es una "zona" que este dashboard pueda
+  interpretar.
+- **Layout angosto (~1200-1920px, solo para revisar en un navegador de
+  escritorio -- el target sigue siendo 1920×1200 fijo en la tablet):**
+  `--ancho-col-mapa`/`--ancho-col-estado` (`theme/tokens.css`) pasaron de
+  px fijo a `clamp()` en vw, para que el mapa y la columna de estado
+  cedan ancho antes que la lista de eventos. Las columnas del `NormalLayout`
+  llevan `container-type: inline-size` y las cabeceras/grillas usan
+  `@container`, no `@media`: lo que importa es el ancho de esa columna,
+  no el del viewport (las tres columnas nunca miden lo mismo). La grilla
+  de fila de `EventList` pasó de anchos fijos a `minmax()` con piso más
+  alto en lugar/distancia que en hora/magnitud -- para que esas dos nunca
+  sean las primeras en perder espacio -- y la columna de profundidad
+  (la única puramente decorativa: se repite como color en otras vistas)
+  es la primera en ocultarse del todo bajo cierto ancho de columna. Por
+  debajo de ~1200px no se intenta soportar: `Dashboard.module.css` fija
+  un `min-width` y `html`/`body` permiten scroll horizontal ahí, para que
+  se vea recortado en vez de con texto solapado.
+- **`?noche=false`/`?noche=true`** (`useNightMode.ts`, parámetro opcional
+  `forzar`) sobrescriben el cálculo por hora del atenuador nocturno
+  (handoff §5.1) sin cambiar la hora del sistema, para poder revisar el
+  diseño a brillo pleno en desarrollo. Sin el parámetro decide el reloj
+  real, igual que antes.

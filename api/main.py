@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import load_config
 from db import Database
 from notifier import SEISMIC_CHANNEL, Broadcaster, make_notify_callback
+from routers import config as config_router
 from routers import events, health, stream
 
 config = load_config()
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI):
 
     app.state.db = db
     app.state.broadcaster = broadcaster
+    app.state.config = config
     try:
         yield
     finally:
@@ -49,3 +51,4 @@ app.add_middleware(
 app.include_router(events.router, prefix="/api")
 app.include_router(health.router, prefix="/api")
 app.include_router(stream.router, prefix="/api")
+app.include_router(config_router.router, prefix="/api")

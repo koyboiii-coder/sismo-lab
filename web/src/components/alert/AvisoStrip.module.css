@@ -1,0 +1,68 @@
+.franja {
+  height: 120px;
+  flex-shrink: 0;
+  background: var(--panel-alto);
+  border-bottom: var(--divisor-fuerte) solid var(--div-fuerte);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  padding: 0 var(--sp-6);
+  position: relative;
+}
+
+.barraLateral {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background: var(--degradado);
+}
+
+.magnitud {
+  font-size: 62px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.separador {
+  width: var(--divisor-fuerte);
+  align-self: stretch;
+  background: var(--div-fuerte);
+  flex-shrink: 0;
+}
+
+.detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.lugar {
+  font-size: 26px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--tinta-3);
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cuentaRegresiva {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--degradado);
+  letter-spacing: 0.06em;
+}

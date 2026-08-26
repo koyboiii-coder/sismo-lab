@@ -1,0 +1,50 @@
+.pantalla {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--fondo);
+  padding: var(--sp-8);
+  gap: var(--sp-7);
+}
+
+.franja {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--alerta);
+}
+
+.cuerpo {
+  display: flex;
+  gap: var(--sp-9);
+}
+
+.celda {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.etiqueta {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--tinta-4);
+}
+
+.cifra {
+  font-size: 48px;
+  font-weight: 800;
+}
+
+.frase {
+  font-size: 20px;
+  color: var(--tinta-2);
+}
+
+.nota {
+  margin-top: auto;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--degradado);
+}

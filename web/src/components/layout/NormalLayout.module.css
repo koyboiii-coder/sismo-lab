@@ -1,0 +1,29 @@
+.cuerpo {
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--ancho-col-mapa) 1fr var(--ancho-col-estado);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.col {
+  min-width: 0;
+  overflow: hidden;
+  border-right: var(--divisor-fuerte) solid var(--div-fuerte);
+  container-type: inline-size;
+}
+
+.colSinBorde {
+  min-width: 0;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.colB {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border-right: var(--divisor-fuerte) solid var(--div-fuerte);
+  container-type: inline-size;
+}

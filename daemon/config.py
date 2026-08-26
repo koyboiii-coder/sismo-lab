@@ -5,6 +5,23 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+def _require_float(name: str) -> float:
+    """HOME_LAT/HOME_LON drive the intensity engine (distance, PGA, MMI --
+    see intensity.py) and every alert threshold. No default: a missing or
+    blank value used to silently fall back to a placeholder location, which
+    quietly mis-scored every event's distance/intensity against the wrong
+    place. Better to crash loudly at startup than degrade gracefully here --
+    rule 4 (graceful degradation) is about data sources going down, not
+    about the one number the whole GMPE pipeline is built on."""
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        raise RuntimeError(
+            f"{name} is required (no default) -- set it in infra/.env. "
+            "See CLAUDE.md 'Motor de reglas'."
+        )
+    return float(raw)
+
+
 @dataclass(frozen=True)
 class Config:
     database_url: str
@@ -62,8 +79,8 @@ def load_config() -> Config:
             "CSN_URL", "https://api.gael.cloud/general/public/sismos"
         ),
         csn_poll_interval_s=int(os.environ.get("CSN_POLL_INTERVAL_S", "300")),
-        home_lat=float(os.environ.get("HOME_LAT", "-36.8270")),
-        home_lon=float(os.environ.get("HOME_LON", "-73.0498")),
+        home_lat=_require_float("HOME_LAT"),
+        home_lon=_require_float("HOME_LON"),
         ntfy_url=os.environ.get("NTFY_URL", "http://ntfy:80"),
         ntfy_topic=os.environ.get("NTFY_TOPIC", "sismos"),
         ntfy_token=os.environ.get("NTFY_TOKEN", ""),
