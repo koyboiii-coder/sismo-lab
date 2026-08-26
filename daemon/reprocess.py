@@ -55,7 +55,7 @@ async def _load_reports(conn: asyncpg.Connection) -> list[dict]:
         """
         SELECT source, source_event_id, payload, received_at,
                origin_time, latitude, longitude, depth_km,
-               magnitude, magnitude_type, region
+               magnitude, magnitude_type, region, source_mmi, rupture_geometry
         FROM event_reports
         ORDER BY received_at ASC, id ASC
         """
@@ -93,7 +93,17 @@ async def main(dry_run: bool, assume_yes: bool) -> None:
         await conn.execute("TRUNCATE TABLE events RESTART IDENTITY CASCADE")
         logger.info("truncated events/event_reports, replaying history...")
 
-        writer = Writer(config.database_url, dry_run=False)
+        writer = Writer(
+            config.database_url,
+            dry_run=False,
+            home_lat=config.home_lat,
+            home_lon=config.home_lon,
+            # This replays potentially months of history through the same
+            # create/recanonicalize path live ingestion uses -- without
+            # this, every significant historical earthquake would fire a
+            # real ntfy notification again. See db.Writer.alerts_enabled.
+            alerts_enabled=False,
+        )
         await writer.connect()
         try:
             for report in reports:
@@ -112,6 +122,14 @@ async def main(dry_run: bool, assume_yes: bool) -> None:
                         magnitude_type=report["magnitude_type"],
                         region=report["region"],
                         preferred_source=report["source"],
+                        source_mmi=report["source_mmi"],
+                        # No jsonb codec on this plain asyncpg.connect(), same
+                        # as payload above -- comes back as raw JSON text.
+                        rupture_geometry=(
+                            json.loads(report["rupture_geometry"])
+                            if report["rupture_geometry"] is not None
+                            else None
+                        ),
                     )
                 await writer.ingest(
                     source=report["source"],

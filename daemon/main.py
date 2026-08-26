@@ -6,6 +6,10 @@ import logging
 import signal
 import traceback
 
+import asyncpg
+
+import geocoding
+import migrations
 from config import load_config
 from connectors import csn, emsc, usgs
 from db import Writer
@@ -107,10 +111,29 @@ async def main_async(dry_run: bool) -> None:
         level=config.log_level, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
 
+    # Loud-at-startup, not silent-per-lookup -- see geocoding.startup_check.
+    geocoding.startup_check()
+
+    if not dry_run:
+        # Applies any infra/postgres/init/*.sql the running Postgres volume
+        # hasn't seen yet -- see migrations.py. Runs before the Writer's own
+        # pool/connectors so nothing touches a table/column that isn't there
+        # yet. Skipped in --dry-run along with every other DB write.
+        migration_conn = await asyncpg.connect(config.database_url)
+        try:
+            await migrations.run_pending(migration_conn, config.migrations_dir)
+        finally:
+            await migration_conn.close()
+
     writer = Writer(
         config.database_url,
         dry_run=dry_run,
+        home_lat=config.home_lat,
+        home_lon=config.home_lon,
         command_timeout_s=config.db_command_timeout_s,
+        ntfy_url=config.ntfy_url,
+        ntfy_topic=config.ntfy_topic,
+        ntfy_token=config.ntfy_token,
     )
     await writer.connect()
 

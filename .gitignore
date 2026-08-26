@@ -5,3 +5,8 @@ node_modules/
 .next/
 *.log
 data/
+# ...except the offline gazetteer daemon/geocoding.py embeds -- see
+# daemon/build_gazetteer.py. It must ship in the image, so it must be
+# committed, not regenerated or downloaded at build/run time.
+!daemon/data/
+!daemon/data/cl_gazetteer.tsv.gz

@@ -24,8 +24,9 @@ SEISMIC_CHANNEL = "seismic_events"
 EVENT_FIELDS = """
     cluster_key, origin_time, latitude, longitude, depth_km, magnitude,
     magnitude_type, region, distance_km, estimated_pga, estimated_mmi,
-    preferred_source, is_significant, alert_sent_at, first_seen_at,
-    updated_at, revision
+    preferred_source, is_significant, alert_sent_at, alert_level_sent,
+    first_seen_at, updated_at, revision, intensity_geometry_source,
+    intensity_distance_saturated
 """
 
 SOURCES = ("CSN", "USGS", "EMSC")
@@ -72,9 +73,22 @@ def serialize_event(row: asyncpg.Record) -> dict:
         "distance_km": row["distance_km"],
         "estimated_pga": row["estimated_pga"],
         "estimated_mmi": row["estimated_mmi"],
+        # What estimated_mmi's distance was actually based on ('finite_fault'
+        # | 'wells_coppersmith' | None) and, for the latter, whether its
+        # worst-case depth floor was hit -- see
+        # daemon/intensity.py:rupture_distance_km. The dashboard should
+        # qualify estimated_mmi (e.g. "MMI VII estimado -- geometria de
+        # falla desconocida") whenever intensity_distance_saturated is true,
+        # rather than showing it as a precise figure.
+        "intensity_geometry_source": row["intensity_geometry_source"],
+        "intensity_distance_saturated": row["intensity_distance_saturated"],
         "preferred_source": row["preferred_source"],
         "is_significant": row["is_significant"],
         "alert_sent_at": _iso(row["alert_sent_at"]),
+        # 'silent' | 'full' | None -- which notification tier (daemon/
+        # alerts.py) was actually sent for this event, if any. See
+        # infra/postgres/init/005_alerts.sql.
+        "alert_level_sent": row["alert_level_sent"],
         "first_seen_at": _iso(row["first_seen_at"]),
         "updated_at": _iso(row["updated_at"]),
         "revision": row["revision"],

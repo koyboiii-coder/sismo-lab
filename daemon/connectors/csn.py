@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 
 import aiohttp
 
+import geocoding
 from config import Config
 from db import Writer
 from models import ParsedEvent
@@ -51,14 +52,20 @@ def parse(item: dict) -> ParsedEvent:
         tzinfo=CHILE_TZ
     )
     origin_time = local_dt.astimezone(UTC_TZ)
+    region = item.get("RefGeografica")
+    # CSN never gives coordinates directly -- geocode_ref_geografica derives
+    # them from RefGeografica's "<dist> km al <rumbo> de <localidad>" shape.
+    # Returns None (never an approximate/invented point) if parsing,
+    # locality lookup, or disambiguation fails -- see geocoding.py.
+    geocoded = geocoding.geocode_ref_geografica(region)
     return ParsedEvent(
         origin_time=origin_time,
-        latitude=None,
-        longitude=None,
+        latitude=geocoded.latitude if geocoded else None,
+        longitude=geocoded.longitude if geocoded else None,
         depth_km=_parse_float(item.get("Profundidad")),
         magnitude=_parse_float(item.get("Magnitud")),
         magnitude_type=None,
-        region=item.get("RefGeografica"),
+        region=region,
         preferred_source=SOURCE,
     )
 

@@ -9,7 +9,10 @@ from typing import Optional
 
 import asyncpg
 
+import alerts
 import dedup
+import intensity
+import tsunami
 from models import ParsedEvent
 
 logger = logging.getLogger(__name__)
@@ -64,10 +67,33 @@ class Writer:
     separate clusters.
     """
 
-    def __init__(self, dsn: str, dry_run: bool, command_timeout_s: float = 30.0):
+    def __init__(
+        self,
+        dsn: str,
+        dry_run: bool,
+        home_lat: float = 0.0,
+        home_lon: float = 0.0,
+        command_timeout_s: float = 30.0,
+        ntfy_url: str = "",
+        ntfy_topic: str = "",
+        ntfy_token: str = "",
+        alerts_enabled: bool = True,
+    ):
         self.dsn = dsn
         self.dry_run = dry_run
+        self.home_lat = home_lat
+        self.home_lon = home_lon
         self.command_timeout_s = command_timeout_s
+        self.ntfy_url = ntfy_url
+        self.ntfy_topic = ntfy_topic
+        self.ntfy_token = ntfy_token
+        # False for reprocess.py's replay Writer: it rebuilds `events` from
+        # historical event_reports through this same create/recanonicalize
+        # path, and without this it would re-fire a live ntfy notification
+        # for every significant earthquake in the whole replayed history.
+        # recompute.py never goes through Writer at all, so it needs no
+        # equivalent guard.
+        self.alerts_enabled = alerts_enabled
         self._pool: Optional[asyncpg.Pool] = None
         self._write_lock = asyncio.Lock()
 
@@ -111,6 +137,7 @@ class Writer:
                             "magnitude_type": parsed.magnitude_type,
                             "region": parsed.region,
                             "preferred_source": parsed.preferred_source,
+                            "source_mmi": parsed.source_mmi,
                         },
                         "payload": payload,
                     },
@@ -136,6 +163,7 @@ class Writer:
         (`write_report`, `received_at=now()`) and `reprocess.py` (replays
         history with each report's original `received_at`)."""
         assert self._pool is not None
+        pending_notification: Optional[dict] = None
         async with self._write_lock:
             async with self._pool.acquire() as conn:
                 async with conn.transaction():
@@ -166,18 +194,28 @@ class Writer:
                         event_id = await self._find_cluster_match(conn, parsed)
 
                     if event_id is None:
-                        await self._create_event(
+                        pending_notification = await self._create_event(
                             conn, source, source_event_id, payload, parsed, received_at
                         )
-                        return
-
-                    await conn.fetchrow(
-                        "SELECT id FROM events WHERE id = $1 FOR UPDATE", event_id
-                    )
-                    await self._insert_report(
-                        conn, event_id, source, source_event_id, payload, parsed, received_at
-                    )
-                    await self._recanonicalize(conn, event_id, source)
+                    else:
+                        previous = await conn.fetchrow(
+                            "SELECT alert_level_sent, alert_sent_at FROM events "
+                            "WHERE id = $1 FOR UPDATE",
+                            event_id,
+                        )
+                        await self._insert_report(
+                            conn, event_id, source, source_event_id, payload, parsed, received_at
+                        )
+                        pending_notification = await self._recanonicalize(
+                            conn, event_id, source,
+                            previous["alert_level_sent"], previous["alert_sent_at"],
+                        )
+        # Sent only after the transaction above has committed -- an ntfy
+        # POST isn't transactional/revocable like the pg_notify() inside it
+        # is, so it must never fire for a write that could still roll back.
+        # See _send_alert and Writer.alerts_enabled.
+        if pending_notification is not None:
+            await self._send_alert(pending_notification)
 
     async def _create_event(
         self,
@@ -187,14 +225,38 @@ class Writer:
         payload: dict,
         parsed: ParsedEvent,
         received_at: datetime,
-    ) -> None:
+    ) -> Optional[dict]:
         cluster_key = uuid.uuid4()
+        est = intensity.estimate(
+            latitude=parsed.latitude,
+            longitude=parsed.longitude,
+            depth_km=parsed.depth_km,
+            magnitude=parsed.magnitude,
+            home_lat=self.home_lat,
+            home_lon=self.home_lon,
+            rupture_vertices=parsed.rupture_geometry,
+        )
+        usgs_mmi = parsed.source_mmi if source == "USGS" else None
+
+        # Brand-new event: nothing could have been notified for it yet, so
+        # this only ever decides whether to send the *first* notification.
+        new_level = alerts.alert_level(est.estimated_mmi)
+        notify = alerts.should_notify(new_level, None)
+        alert_level_sent = new_level if notify else None
+        alert_sent_at = datetime.now(timezone.utc) if notify else None
+        tsunami_flag = tsunami.possible_tsunami_source(
+            parsed.latitude, parsed.longitude, parsed.depth_km, parsed.magnitude
+        )
+
         event_id = await conn.fetchval(
             """
             INSERT INTO events (
                 cluster_key, origin_time, latitude, longitude, depth_km,
-                magnitude, magnitude_type, region, preferred_source
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                magnitude, magnitude_type, region, preferred_source,
+                distance_km, estimated_pga, estimated_mmi, is_significant,
+                usgs_reported_mmi, intensity_geometry_source,
+                intensity_distance_saturated, alert_level_sent, alert_sent_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
             RETURNING id
             """,
             cluster_key,
@@ -206,19 +268,47 @@ class Writer:
             parsed.magnitude_type,
             parsed.region,
             parsed.preferred_source,
+            est.distance_km,
+            est.estimated_pga,
+            est.estimated_mmi,
+            est.is_significant,
+            usgs_mmi,
+            est.geometry_source,
+            est.distance_saturated,
+            alert_level_sent,
+            alert_sent_at,
         )
         await self._insert_report(
             conn, event_id, source, source_event_id, payload, parsed, received_at
         )
         await _notify(conn, "insert", cluster_key)
         logger.info(
-            "[%s] new cluster %s: mag=%s depth=%s region=%s",
+            "[%s] new cluster %s: mag=%s depth=%s region=%s mmi=%s significant=%s "
+            "geometry=%s saturated=%s alert=%s tsunami_flag=%s",
             source,
             cluster_key,
             parsed.magnitude,
             parsed.depth_km,
             parsed.region,
+            est.estimated_mmi,
+            est.is_significant,
+            est.geometry_source,
+            est.distance_saturated,
+            new_level,
+            tsunami_flag,
         )
+
+        if not notify:
+            return None
+        return {
+            "level": new_level,
+            "magnitude": parsed.magnitude,
+            "distance_km": est.distance_km,
+            "mmi": est.estimated_mmi,
+            "depth_km": parsed.depth_km,
+            "region": parsed.region,
+            "tsunami_flag": tsunami_flag,
+        }
 
     async def _insert_report(
         self,
@@ -235,8 +325,8 @@ class Writer:
             INSERT INTO event_reports (
                 event_id, source, source_event_id, payload, received_at,
                 origin_time, latitude, longitude, depth_km,
-                magnitude, magnitude_type, region
-            ) VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10, $11, $12)
+                magnitude, magnitude_type, region, source_mmi, rupture_geometry
+            ) VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)
             """,
             event_id,
             source,
@@ -250,6 +340,8 @@ class Writer:
             parsed.magnitude,
             parsed.magnitude_type,
             parsed.region,
+            parsed.source_mmi,
+            json.dumps(parsed.rupture_geometry) if parsed.rupture_geometry is not None else None,
         )
 
     async def _find_cluster_match(
@@ -275,13 +367,18 @@ class Writer:
         return best_id
 
     async def _recanonicalize(
-        self, conn: asyncpg.Connection, event_id: int, merged_source: str
-    ) -> None:
+        self,
+        conn: asyncpg.Connection,
+        event_id: int,
+        merged_source: str,
+        previous_alert_level: Optional[str],
+        previous_alert_sent_at: Optional[datetime],
+    ) -> Optional[dict]:
         rows = await conn.fetch(
             """
             SELECT DISTINCT ON (source)
                 source, origin_time, latitude, longitude, depth_km,
-                magnitude, magnitude_type, region
+                magnitude, magnitude_type, region, source_mmi, rupture_geometry
             FROM event_reports
             WHERE event_id = $1
             ORDER BY source, received_at DESC
@@ -290,12 +387,59 @@ class Writer:
         )
         snapshots = [dict(row) for row in rows]
         canonical = dedup.recompute_canonical(snapshots)
+        usgs_mmi = next(
+            (s["source_mmi"] for s in snapshots if s["source"] == "USGS" and s["source_mmi"] is not None),
+            None,
+        )
+        # rupture_geometry is JSONB with no type codec registered on this
+        # pool (unlike api/db.py), so asyncpg hands it back as raw JSON
+        # text -- same reason usgs_mmi's sibling columns don't need this but
+        # this one does.
+        rupture_geometry_json = next(
+            (
+                s["rupture_geometry"]
+                for s in snapshots
+                if s["source"] == "USGS" and s["rupture_geometry"] is not None
+            ),
+            None,
+        )
+        rupture_vertices = (
+            json.loads(rupture_geometry_json) if rupture_geometry_json is not None else None
+        )
+        est = intensity.estimate(
+            latitude=canonical["latitude"],
+            longitude=canonical["longitude"],
+            depth_km=canonical["depth_km"],
+            magnitude=canonical["magnitude"],
+            home_lat=self.home_lat,
+            home_lon=self.home_lon,
+            rupture_vertices=rupture_vertices,
+        )
+
+        # CLAUDE.md rule 3: only resend when this revision crosses a tier
+        # `previous_alert_level` hadn't already reached -- see
+        # alerts.should_notify. A revision that stays at the same tier (or
+        # drops, e.g. a magnitude downgrade) keeps the previously-sent
+        # level/timestamp as-is rather than losing the record of what was
+        # already sent.
+        new_level = alerts.alert_level(est.estimated_mmi)
+        notify = alerts.should_notify(new_level, previous_alert_level)
+        alert_level_sent = new_level if notify else previous_alert_level
+        alert_sent_at = datetime.now(timezone.utc) if notify else previous_alert_sent_at
+        tsunami_flag = tsunami.possible_tsunami_source(
+            canonical["latitude"], canonical["longitude"],
+            canonical["depth_km"], canonical["magnitude"],
+        )
 
         row = await conn.fetchrow(
             """
             UPDATE events SET
                 origin_time = $2, latitude = $3, longitude = $4, depth_km = $5,
                 magnitude = $6, magnitude_type = $7, region = $8, preferred_source = $9,
+                distance_km = $10, estimated_pga = $11, estimated_mmi = $12,
+                is_significant = $13, usgs_reported_mmi = $14,
+                intensity_geometry_source = $15, intensity_distance_saturated = $16,
+                alert_level_sent = $17, alert_sent_at = $18,
                 revision = revision + 1, updated_at = NOW()
             WHERE id = $1
             RETURNING cluster_key, revision
@@ -309,11 +453,21 @@ class Writer:
             canonical["magnitude_type"],
             canonical["region"],
             canonical["preferred_source"],
+            est.distance_km,
+            est.estimated_pga,
+            est.estimated_mmi,
+            est.is_significant,
+            usgs_mmi,
+            est.geometry_source,
+            est.distance_saturated,
+            alert_level_sent,
+            alert_sent_at,
         )
         await _notify(conn, "update", row["cluster_key"])
         logger.info(
             "[%s] merged into cluster %s (sources=%s, rev=%s): "
-            "mag=%s depth=%s lat=%s lon=%s region=%s preferred=%s",
+            "mag=%s depth=%s lat=%s lon=%s region=%s preferred=%s mmi=%s significant=%s "
+            "geometry=%s saturated=%s alert=%s (already_sent=%s) tsunami_flag=%s",
             merged_source,
             row["cluster_key"],
             sorted(s["source"] for s in snapshots),
@@ -324,6 +478,40 @@ class Writer:
             canonical["longitude"],
             canonical["region"],
             canonical["preferred_source"],
+            est.estimated_mmi,
+            est.is_significant,
+            est.geometry_source,
+            est.distance_saturated,
+            new_level,
+            previous_alert_level,
+            tsunami_flag,
+        )
+
+        if not notify:
+            return None
+        return {
+            "level": new_level,
+            "magnitude": canonical["magnitude"],
+            "distance_km": est.distance_km,
+            "mmi": est.estimated_mmi,
+            "depth_km": canonical["depth_km"],
+            "region": canonical["region"],
+            "tsunami_flag": tsunami_flag,
+        }
+
+    async def _send_alert(self, notification: dict) -> None:
+        if not self.alerts_enabled:
+            logger.debug(
+                "[alerts] suppressed (alerts_enabled=False, e.g. reprocess.py "
+                "replay): %s notification for mag=%s",
+                notification["level"], notification["magnitude"],
+            )
+            return
+        await alerts.send(
+            ntfy_url=self.ntfy_url,
+            ntfy_topic=self.ntfy_topic,
+            ntfy_token=self.ntfy_token,
+            **notification,
         )
 
     async def mark_source_ok(self, source: str) -> None:

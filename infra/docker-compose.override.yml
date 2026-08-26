@@ -1,0 +1,24 @@
+# Local development only. `docker compose` auto-merges this with
+# docker-compose.yml whenever it's run from this directory with no -f flags
+# -- that's the whole point, no extra command needed.
+#
+# It bind-mounts the daemon source over the image's baked-in copy, so a new
+# or edited .py file is visible inside the container immediately. The
+# process itself still has to pick it up though: `docker compose restart
+# daemon` (fast, no image rebuild) after any change. A rebuild
+# (`docker compose build daemon`) is still required when requirements.txt
+# changes, since dependencies are installed at build time, not from this
+# mount. See ../README.md.
+#
+# Do not ship this file to the Pi / include it in the production deploy --
+# production must run the prebuilt linux/arm64 image from the buildx
+# workflow (see CLAUDE.md), not a live bind mount of the source tree.
+services:
+  daemon:
+    volumes:
+      - ../daemon:/app
+    environment:
+      # Skip writing .pyc files into the bind-mounted source tree -- the
+      # container runs as root, so cache files it writes there would end up
+      # root-owned on the host otherwise.
+      PYTHONDONTWRITEBYTECODE: "1"

@@ -86,7 +86,8 @@ def matches_cluster(parsed: ParsedEvent, candidate: dict) -> bool:
     if dt > TIME_WINDOW_S_NO_COORDS:
         return False
 
-    # CSN is the only source that ever lacks coordinates and it's
+    # CSN is the only source that can lack coordinates (when
+    # geocoding.py fails to resolve RefGeografica -- see csn.py) and it's
     # exclusively Chilean. If the *other* side does have coordinates, they
     # must sit inside Chile -- otherwise this is two unrelated events that
     # merely share a magnitude and a moment (the Alaska/Argentina bug). If

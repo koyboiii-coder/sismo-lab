@@ -308,9 +308,53 @@ docker buildx build --platform linux/arm64 -t ghcr.io/<user>/sismos-daemon:lates
 - [ ] **Fase 2** — `api/`: REST + SSE
 - [ ] **Fase 3** — `web/`: dashboard según diseño
 - [ ] **Fase 4** — `infra/`: compose, Caddy, systemd, healthchecks
-- [ ] **Fase 5** — notificaciones: ntfy + MQTT hacia Home Assistant
+- [~] **Fase 5** — notificaciones: ntfy hecho, MQTT/Home Assistant pendiente
 - [ ] **Futuro** — SeedLink: detección propia sobre forma de onda de estaciones
       públicas, con STA/LTA. Objetivo: anticipación de 20–40 s antes de la onda S.
 
 Trabajar una fase por sesión. Al terminar cada una, marcar aquí y anotar
 decisiones no obvias que se hayan tomado.
+
+### Decisiones no obvias — motor de intensidad y alertas (sesión posterior a fase 2)
+
+- **Rrup vs. distancia hipocentral**: `youngs_1997_pga_g` necesita distancia
+  a la ruptura (Rrup), no al hipocentro. Sin geometría real, se usa
+  Wells & Coppersmith (1994) para estimar el largo de ruptura desde M y
+  recortar la distancia hipocentral por ese largo, con piso en `depth_km`
+  (`intensity.rupture_distance_km`) — deliberadamente el caso más
+  conservador (la ruptura se extiende su largo completo hacia el sitio),
+  no un promedio. Sin esto, un M8.8 a 350 km calculaba MMI IV en vez de
+  VII y no cruzaba el umbral de alerta completa. Cuando USGS publica
+  geometría real de ruptura (M≥7, `shakemap.rupture.json`, ver
+  `connectors/usgs.fetch_rupture_geometry`), esa geometría reemplaza la
+  aproximación — `events.intensity_geometry_source` /
+  `intensity_distance_saturated` registran cuál se usó, para que el
+  dashboard pueda mostrar la MMI como cota incierta en vez de cifra precisa
+  cuando corresponda. Ver `daemon/validate_intensity.py` para el detalle
+  numérico completo.
+- **Alertas por proximidad, no por anticipación**: las 3 fuentes publican
+  con 2-5 min de retraso, así que no hay ventana de anticipación real. El
+  daemon prioriza latencia de notificación sobre precisión inicial: alerta
+  con el primer reporte que cruce un umbral MMI, sin esperar confirmación
+  de otras fuentes (`db.Writer._create_event`/`_recanonicalize` +
+  `alerts.py`). Nunca reenvía por una revisión salvo que se cruce un umbral
+  más alto que el ya notificado (`events.alert_level_sent`).
+- **ntfy con auth, no un topic público**: el servicio `ntfy` en
+  docker-compose corre con `auth-default-access=deny-all`. Bootstrap único
+  vía `infra/ntfy-setup.sh` (crea usuario/token para el daemon y un usuario
+  de solo lectura para el teléfono/dashboard). `NTFY_TOKEN` vive en
+  `infra/.env` (gitignored), nunca en docker-compose.yml.
+- **Bandera de tsunami es solo un heurístico de "revisa la fuente oficial"**:
+  `tsunami.py` marca eventos costeros y superficiales (tabla de referencia
+  de costa hecha a mano, sin dataset real) para destacar el aviso — nunca
+  reemplaza una determinación real. No existe una API/feed pública de
+  boletines SHOA/SNAM en tiempo real (se investigó shoa.cl y snamchile.cl:
+  ambos son páginas pensadas para humanos, sin JSON/RSS consultable); la
+  notificación simplemente enlaza a snamchile.cl y menciona SENAPRED en vez
+  de intentar un scraper frágil para una decisión de evacuación.
+- **UI (Fase 3) todavía no existe**: el pedido de un texto permanente
+  aclarando "informativo post-evento, no alerta temprana" quedó pendiente
+  de esa fase — no hay `web/` ni diseño en `docs/design/` todavía. Los
+  campos que ese texto necesitaría ya están expuestos por la API
+  (`alert_level_sent` vía el estado del evento, `intensity_geometry_source`,
+  `intensity_distance_saturated`).

@@ -1,0 +1,52 @@
+# daemon/data/manual_places.tsv
+#
+# Hand-curated overlay for daemon/geocoding.py's gazetteer, loaded on top of
+# the GeoNames-derived data/cl_gazetteer.tsv.gz. Kept in a separate file --
+# not folded into build_gazetteer.py's output -- for two reasons:
+#
+#   1. Re-running build_gazetteer.py against a fresh GeoNames export must
+#      never silently drop these rows. GeoNames classifies mines as feature
+#      class S (facility), which build_gazetteer.py's whitelist deliberately
+#      excludes wholesale: the Chile extract has ~1,800 mine entries, many
+#      sharing generic Spanish names ("Alicia", "California", "Blanca")
+#      that would introduce fresh ambiguous matches for every real locality
+#      sharing that name. This file names the specific mines CSN actually
+#      cites in RefGeografica, not a reopening of that whitelist.
+#   2. Several of these mines -- El Teniente, Radomiro Tomic, Spence,
+#      Ministro Hales, Los Pelambres, Andina, Candelaria, Zaldívar,
+#      Centinela, Gabriela Mistral -- aren't in GeoNames' Chile extract
+#      under any feature class at all. Their coordinates below are the
+#      mine site's approximate public location (general geographic
+#      knowledge), not sourced from GeoNames -- verify against an
+#      authoritative source before trusting them at sub-km precision.
+#      Collahuasi, Chuquicamata, Escondida and El Salvador *are* in
+#      GeoNames (just excluded by the class-S whitelist) and use those
+#      coordinates directly.
+#
+# When a future CSN RefGeografica fails to geocode because it names a mine
+# (see geocoding.py's DEBUG "reason=not_found" logs), add it here as one
+# row -- this is the file to extend, not build_gazetteer.py's whitelist.
+#
+# Columns match data/cl_gazetteer.tsv.gz: name, asciiname, lat, lon, fclass,
+# fcode, admin1, population. fclass=S/fcode=MN (GeoNames' "mine(s)" code)
+# throughout, so these rank behind any populated place sharing the same
+# name in geocoding.py's ambiguity resolution (see _CLASS_RANK) -- a town
+# should win over a mine of the same name. admin1 is left blank: it's
+# parsed but never used by geocoding.py (see Gazetteer.load), and we'd
+# rather leave it empty than assert a GeoNames admin1 code we haven't
+# verified.
+name	asciiname	lat	lon	fclass	fcode	admin1	population
+Collahuasi	Collahuasi	-20.96667	-68.7	S	MN		0
+Chuquicamata	Chuquicamata	-22.31581	-68.92898	S	MN		0
+Escondida	Escondida	-24.2667	-69.0667	S	MN		0
+El Teniente	El Teniente	-34.085	-70.35	S	MN		0
+Radomiro Tomic	Radomiro Tomic	-22.2667	-68.95	S	MN		0
+Spence	Spence	-22.7833	-69.1	S	MN		0
+Ministro Hales	Ministro Hales	-22.2833	-68.9333	S	MN		0
+Los Pelambres	Los Pelambres	-31.7333	-70.4667	S	MN		0
+Andina	Andina	-32.8333	-70.25	S	MN		0
+El Salvador	El Salvador	-26.24398	-69.62546	S	MN		0
+Candelaria	Candelaria	-27.7	-70.3333	S	MN		0
+Zaldívar	Zaldivar	-24.2833	-69.1	S	MN		0
+Centinela	Centinela	-23.0	-69.2333	S	MN		0
+Gabriela Mistral	Gabriela Mistral	-21.8833	-69.1667	S	MN		0

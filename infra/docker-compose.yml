@@ -32,14 +32,81 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://sismos:sismos@postgres:5432/sismos
+      # infra/postgres/init isn't part of the daemon's own build context
+      # (see Dockerfile), so it's mounted read-only instead -- same source
+      # files the postgres service's docker-entrypoint-initdb.d uses,
+      # single source of truth for both. See daemon/migrations.py.
+      # Mounted outside /app (not /app/migrations): docker-compose.override.yml
+      # bind-mounts the whole daemon/ dir at /app for local dev, and nesting
+      # this mount under that one made Docker auto-create an empty,
+      # root-owned daemon/migrations/ dir on the host as a mountpoint. See
+      # the volumes entry below and README.md.
+      MIGRATIONS_DIR: /migrations
+      # See daemon/alerts.py. The `ntfy` service below runs
+      # auth-default-access=deny-all, so NTFY_TOKEN is required for
+      # notifications to actually go out -- see infra/ntfy-setup.sh for the
+      # one-time bootstrap that creates it. NTFY_TOKEN itself comes from
+      # infra/.env (gitignored, not this file) via docker compose's
+      # automatic ${VAR} substitution -- never hardcode the real token here.
+      # Defaults to empty rather than failing compose outright (rule 4:
+      # graceful degradation) -- before ntfy-setup.sh has run, the daemon
+      # still starts and ingests normally, it just logs a warning on every
+      # notification attempt instead of sending it.
+      NTFY_URL: http://ntfy:80
+      NTFY_TOPIC: sismos
+      NTFY_TOKEN: ${NTFY_TOKEN:-}
+    volumes:
+      - ./postgres/init:/migrations:ro
     depends_on:
       postgres:
+        condition: service_healthy
+      ntfy:
         condition: service_healthy
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+
+  ntfy:
+    # Self-hosted push notifications (daemon/alerts.py). No MQTT/Home
+    # Assistant bridge yet -- CLAUDE.md's Fase 5 -- but ntfy's own topic is
+    # the clean integration point for that later: anything that can
+    # subscribe to an ntfy topic (including a future MQTT bridge) can listen
+    # here without daemon-side changes.
+    #
+    # Runs with auth-default-access=deny-all: nothing can publish or
+    # subscribe until a user is explicitly ACL'd on a topic. Required
+    # before this is ever exposed past the Docker network (e.g. through
+    # Caddy for phone push) -- an unauthenticated topic name is the only
+    # thing that would otherwise stop anyone who guesses/finds it from
+    # reading alerts or publishing a spoofed one. See infra/ntfy-setup.sh
+    # for the one-time bootstrap (creates the daemon's publishing user +
+    # token, and a read-only user for phones/the dashboard to subscribe
+    # with).
+    image: binwiederhier/ntfy
+    command: serve
+    platform: linux/arm64
+    ports:
+      - "8081:80"
+    restart: unless-stopped
+    environment:
+      TZ: America/Santiago
+      NTFY_AUTH_FILE: /var/lib/ntfy/auth.db
+      NTFY_AUTH_DEFAULT_ACCESS: deny-all
+    volumes:
+      - /mnt/data/ntfy:/var/lib/ntfy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 -O /dev/null http://localhost:80/v1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 
   api:
     # Same local-build-vs-Pi-pulls-a-prebuilt-image split as `daemon` above.
