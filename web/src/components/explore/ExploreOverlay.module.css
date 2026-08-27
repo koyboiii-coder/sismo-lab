@@ -1,0 +1,183 @@
+.capa {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.capa > * {
+  pointer-events: auto;
+}
+
+/* Controles anclados al borde inferior derecho, a ras -- NUNCA abajo a la
+   izquierda: ahí vive la leyenda del mapa nacional (columna A), y un
+   control encima de "PROFUNDIDAD/MAGNITUD/MI UBICACIÓN" tapaba justo lo
+   que hace falta para leer los puntos del mapa (bug real en tablet).
+   Abajo a la derecha se apoya sobre el pie de la columna de estado
+   ("PAQUETE RECIBIDO...", texto secundario y de bajo contraste). Van a
+   ras de la esquina (sin margen) y comparten borde superior: leídos como
+   una pestaña que sale del panel, no como un botón flotante suelto. */
+.controlesInferiores {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+/* Pestaña coherente con las cabeceras de panel del dashboard
+   (PanelHeader / .tituloModulo): misma altura, mismo borde de 2px con
+   --div-fuerte, mismo tratamiento tipográfico en versal. Sin borde
+   inferior: la pestaña se apoya en el canto de la pantalla. */
+.pestanaNotas {
+  height: var(--alto-cabecera-panel);
+  padding: 0 var(--sp-5);
+  border: var(--divisor-fuerte) solid var(--div-fuerte);
+  border-bottom: none;
+  background: var(--panel);
+  color: var(--tinta-2);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Cuando el modo exploración está activo, el contador aparece pegado a la
+   izquierda de la pestaña (comparten el canto) como una sola barra. */
+.aviso,
+.avisoDescarte {
+  display: flex;
+  align-items: center;
+  height: var(--alto-cabecera-panel);
+  padding: 0 var(--sp-4);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--panel);
+  border: var(--divisor-fuerte) solid var(--div-fuerte);
+  border-bottom: none;
+  border-right: none;
+  white-space: nowrap;
+}
+
+.aviso {
+  color: var(--tinta-3);
+}
+
+.avisoDescarte {
+  color: var(--degradado);
+  border-top-color: var(--degradado);
+  border-left-color: var(--degradado);
+}
+
+.velo {
+  position: absolute;
+  inset: 0;
+  background: var(--velo);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-8);
+}
+
+.panelGrande {
+  width: 100%;
+  height: 100%;
+  max-width: 1600px;
+  max-height: 1080px;
+  background: var(--panel);
+  border: 2px solid var(--div-fuerte);
+  display: flex;
+  flex-direction: column;
+}
+
+.encabezadoPanel {
+  height: var(--alto-cabecera-panel);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--sp-6);
+  border-bottom: 2px solid var(--div-fuerte);
+}
+
+.tituloPanel {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tinta-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.botonTexto {
+  min-height: 44px;
+  padding: 8px 18px;
+  border: 2px solid var(--tinta);
+  background: transparent;
+  color: var(--tinta);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
+.detalleCuerpo {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 720px;
+  overflow: hidden;
+}
+
+.detalleDatos {
+  padding: var(--sp-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  overflow-y: auto;
+  border-right: 2px solid var(--div-fuerte);
+}
+
+.etiquetaDetalle {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--tinta-4);
+}
+
+.cifraDetalle {
+  display: block;
+  font-size: 44px;
+  font-weight: 800;
+}
+
+.descripcionMmi {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--tinta-2);
+  max-width: 640px;
+  overflow-wrap: break-word;
+}
+
+.metaDetalle {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--tinta-3);
+}
+
+.detalleMapa {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+  min-width: 0;
+  overflow: hidden;
+}

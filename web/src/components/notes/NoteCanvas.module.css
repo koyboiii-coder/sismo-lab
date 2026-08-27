@@ -1,0 +1,64 @@
+.contenedor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.lienzo {
+  flex: 1;
+  min-height: 0;
+  background: var(--panel);
+  border: var(--divisor-suave) solid var(--div-suave);
+  /* touch-action:none, no solo preventDefault en el handler: sin esto
+     Android trata el primer pointerdown como el inicio de un scroll/zoom
+     del sistema antes de que el listener alcance a cancelarlo, y el
+     primer tramo de cada trazo sale cortado. */
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.barra {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding-top: var(--sp-4);
+}
+
+.boton {
+  border: 2px solid var(--tinta);
+  padding: 10px 20px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  min-height: 44px;
+  background: transparent;
+  color: var(--tinta);
+}
+
+.boton:disabled {
+  border-color: var(--div-fuerte);
+  color: var(--tinta-4);
+}
+
+.botonGuardar {
+  border-color: var(--nominal);
+  color: var(--nominal);
+}
+
+.botonGuardar:disabled {
+  border-color: var(--div-fuerte);
+  color: var(--tinta-4);
+}
+
+.relleno {
+  flex: 1;
+}
+
+.sinGuardar {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--degradado);
+}

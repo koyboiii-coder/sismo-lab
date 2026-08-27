@@ -48,10 +48,18 @@
   --divisor-fuerte: 2px;
   --divisor-suave: 1px;
 
-  /* Estructura fija -- handoff §3 */
-  --alto-barra-superior: 76px;
+  /* Estructura fija -- handoff §3. --alto-fila-evento subida de 90 a 132px
+     (ver CLAUDE.md, decisiones post primera prueba en tablet real): la Tab
+     M11 real es un panel de 11" a 1920px CSS (~0.12mm/px), mucho más denso
+     que un monitor de escritorio típico a esa misma resolución lógica --
+     "20px" de texto de dato ahí es físicamente ~3x más chico que en la
+     maqueta de referencia. La escala tipográfica de las filas de eventos
+     (EventList.module.css) sube en la misma proporción; la fila crece para
+     que el texto más grande siga teniendo aire, y FILAS_VISIBLES baja de
+     8 a 6 (EventList.tsx) para que sigan calzando sin scroll. */
+  --alto-barra-superior: 84px; /* 76 -> 84: el reloj (TopBar) creció con la escala de esta sesión */
   --alto-cabecera-panel: 44px;
-  --alto-fila-evento: 90px;
+  --alto-fila-evento: 132px;
   /* clamp(), no un px fijo: por debajo de 1920px de ancho de ventana (el
      target es fijo, pero se necesita poder revisar el diseño en un
      navegador de escritorio más angosto durante desarrollo -- ver
@@ -99,6 +107,19 @@ body {
   font-family: var(--font-tabular);
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
+  /* touch-action:none (+ deshabilitar selección/callout nativo) en toda
+     la página: sin esto, el gesto de presión larga del modo exploración
+     (useExploreMode.ts) competía con el reconocedor de gestos nativo de
+     Android (selección de texto / menú contextual también se activan
+     con una presión sostenida) -- en la tablet real, el navegador
+     cancelaba el toque (pointercancel) antes de completar los ~800ms
+     antes de que el modo llegara a activarse. .filasScrolleables
+     recupera el scroll vertical explícitamente donde sí hace falta (ver
+     EventList.module.css). */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 button {

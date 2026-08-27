@@ -9,7 +9,7 @@
 }
 
 .titulo {
-  font-size: 22px;
+  font-size: 27px;
   font-weight: 800;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -23,9 +23,9 @@
 }
 
 .ubicacion {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--tinta-3);
   white-space: nowrap;
 }
@@ -43,14 +43,14 @@
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
 }
 
 .puntoFuente {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
 }
 
 .reloj {
@@ -60,13 +60,13 @@
 }
 
 .horaGrande {
-  font-size: 30px;
+  font-size: 44px;
   font-weight: 700;
 }
 
 .fecha {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   color: var(--tinta-4);
 }

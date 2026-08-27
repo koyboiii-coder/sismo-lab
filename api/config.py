@@ -28,6 +28,8 @@ class Config:
     home_lon: float
     home_label: str
     poll_interval_s: int
+    usgs_poll_interval_s: int
+    csn_poll_interval_s: int
 
 
 def load_config() -> Config:
@@ -54,4 +56,10 @@ def load_config() -> Config:
         home_lon=_require_float("HOME_LON"),
         home_label=os.environ.get("HOME_LABEL", "Casa"),
         poll_interval_s=int(os.environ.get("POLL_INTERVAL_S", "30")),
+        # Mismos nombres/defaults que daemon/config.py -- ver GET /api/config
+        # en routers/config.py. El dashboard los usa para juzgar la salud de
+        # cada fuente por su propia cadencia (CSN cada 5 min, USGS cada 60s)
+        # en vez de mostrar segundos crudos sin contexto (CLAUDE.md, Fase 5).
+        usgs_poll_interval_s=int(os.environ.get("USGS_POLL_INTERVAL_S", "60")),
+        csn_poll_interval_s=int(os.environ.get("CSN_POLL_INTERVAL_S", "300")),
     )

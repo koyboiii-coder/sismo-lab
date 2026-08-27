@@ -1,0 +1,13 @@
+.badge {
+  position: fixed;
+  right: 6px;
+  bottom: 4px;
+  z-index: 999;
+  font-family: monospace;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--tinta-4);
+  opacity: 0.35;
+  pointer-events: none;
+  user-select: none;
+}

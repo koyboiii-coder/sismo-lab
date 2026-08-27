@@ -1,4 +1,10 @@
 .pantalla {
+  /* position:relative: ancla de ExploreOverlay (position:absolute;
+     inset:0, ver NormalLayout.tsx) -- sin esto, funcionaba igual por
+     coincidencia (sin ancestro posicionado, el navegador ancla al
+     viewport, que aquí mide exactamente lo mismo que .pantalla), pero de
+     forma implícita. */
+  position: relative;
   height: 100vh;
   width: 100vw;
   /* Piso de soporte: entre 1200-1920px las columnas se degradan (ver

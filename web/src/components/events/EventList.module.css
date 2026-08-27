@@ -7,15 +7,15 @@
 }
 
 .encabezadoTabla {
-  height: 34px;
+  height: 40px;
   display: grid;
-  grid-template-columns: 6px minmax(56px, 104px) minmax(64px, 116px) minmax(160px, 1fr) minmax(48px, 108px) minmax(110px, 168px);
+  grid-template-columns: 6px minmax(56px, 92px) minmax(64px, 100px) minmax(240px, 1fr) minmax(74px, 140px) minmax(100px, 150px);
   column-gap: var(--sp-4);
   align-items: center;
   padding-right: 24px;
   padding-left: var(--sp-6);
   border-bottom: var(--divisor-suave) solid var(--div-suave);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--tinta-4);
@@ -31,9 +31,20 @@
   overflow: hidden;
 }
 
+/* Modo exploración (state/useExploreMode.ts): las 48h completas, no solo
+   FILAS_VISIBLES -- fuera de "sin scroll" (handoff §1) a propósito, es el
+   único momento en que alguien está tocando la pantalla de cerca. */
+.filasScrolleables {
+  overflow-y: auto;
+  /* body tiene touch-action:none (tokens.css, necesario para el gesto de
+     presión larga que activa este mismo modo) -- reclamarlo acá para
+     que el scroll vertical siga funcionando con el dedo. */
+  touch-action: pan-y;
+}
+
 .sinEventos {
   padding: var(--sp-6);
-  font-size: 14px;
+  font-size: 18px;
   color: var(--tinta-4);
   letter-spacing: 0.08em;
 }
@@ -41,7 +52,7 @@
 .fila {
   height: var(--alto-fila-evento);
   display: grid;
-  grid-template-columns: 6px minmax(56px, 104px) minmax(64px, 116px) minmax(160px, 1fr) minmax(48px, 108px) minmax(110px, 168px);
+  grid-template-columns: 6px minmax(56px, 92px) minmax(64px, 100px) minmax(240px, 1fr) minmax(74px, 140px) minmax(100px, 150px);
   align-items: center;
   column-gap: var(--sp-4);
   padding-right: 24px;
@@ -72,30 +83,30 @@
 
 .barraSeveridad {
   width: 6px;
-  height: 46px;
+  height: 66px;
   justify-self: start;
   margin-left: var(--sp-6);
 }
 
 .filaDestacada .barraSeveridad {
-  height: 66px;
+  height: 92px;
 }
 
 .colHora {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .horaCorta {
-  font-size: 24px;
+  font-size: 34px;
   font-weight: 700;
 }
 
 .metadato {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--tinta-4);
   text-transform: uppercase;
   overflow: hidden;
@@ -110,37 +121,48 @@
 }
 
 .mLabel {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--tinta-4);
 }
 
 .magnitudGrande {
-  font-size: 34px;
+  font-size: 46px;
   font-weight: 800;
 }
 
 .magnitudGrandeSentido {
-  font-size: 38px;
+  font-size: 50px;
   font-weight: 800;
 }
 
 .colLugar {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
 }
 
 .lugarLinea {
   display: flex;
+  /* wrap, no una sola línea rígida: "SENTIDO EN LA ZONA" (ancho fijo,
+     flex-shrink:0 abajo) y el nombre de lugar competían por el mismo
+     espacio -- sin wrap, .lugar (el único que puede encoger) absorbía
+     TODO el déficit y quedaba truncado a un carácter ("5…" en vez de
+     "56 km al O de Ollagüe"). Con wrap, la etiqueta baja a su propia
+     línea si no alcanza, y el lugar se queda con el ancho completo de la
+     columna -- es el dato más importante después de la magnitud. */
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-3);
+  column-gap: var(--sp-3);
+  row-gap: 2px;
   min-width: 0;
 }
 
 .lugar {
-  font-size: 21px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 28px;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -149,12 +171,12 @@
 
 .etiquetaZona {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 3px 8px;
   border: 1px solid var(--degradado);
   color: var(--degradado);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
 .colProfundidad {
@@ -164,38 +186,39 @@
 }
 
 .cuadradoProfundidad {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   flex-shrink: 0;
 }
 
 .profundidadValor {
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .colDistancia {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 2px;
+  gap: 4px;
 }
 
 .distancia {
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 600;
   color: var(--tinta-2);
 }
 
 .distanciaSentida {
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 600;
   color: var(--tinta);
 }
 
 .distanciaSinUbicar {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--degradado);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }

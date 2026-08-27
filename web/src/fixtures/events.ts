@@ -173,4 +173,8 @@ export const HEALTH_FIXTURE_DEGRADADO: RawHealth = {
   },
 };
 
-export const CONFIG_FIXTURE: RawConfig = { home: HOME_FIXTURE, poll_interval_s: 30 };
+export const CONFIG_FIXTURE: RawConfig = {
+  home: HOME_FIXTURE,
+  poll_interval_s: 30,
+  source_cadence_s: { CSN: 300, USGS: 60, EMSC: null },
+};

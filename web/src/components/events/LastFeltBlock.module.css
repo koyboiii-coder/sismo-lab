@@ -1,6 +1,6 @@
 .bloque {
   background: var(--panel-alto);
-  padding: 18px var(--sp-6);
+  padding: 20px var(--sp-6);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -9,9 +9,9 @@
 }
 
 .sinDato {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--tinta-4);
 }
 
@@ -23,7 +23,7 @@
 }
 
 .hace {
-  font-size: 46px;
+  font-size: 58px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -35,7 +35,7 @@
 }
 
 .resumen {
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 600;
   color: var(--tinta-2);
   overflow: hidden;
@@ -51,13 +51,13 @@
 }
 
 .etiquetaRacha {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--tinta-4);
 }
 
 .racha {
-  font-size: 26px;
+  font-size: 32px;
   font-weight: 700;
 }

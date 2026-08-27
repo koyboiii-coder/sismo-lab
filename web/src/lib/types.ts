@@ -62,6 +62,39 @@ export interface RawEventDetail {
 export interface RawConfig {
   home: { lat: number; lon: number; label: string };
   poll_interval_s: number;
+  // null para EMSC: push (WebSocket), sin cadencia de sondeo que violar.
+  source_cadence_s: Record<FuenteId, number | null>;
+}
+
+/** Un punto de trazo, en coordenadas normalizadas 0-1 por eje (relativas
+ * al ancho/alto del lienzo al momento de dibujar, no a px de pantalla) --
+ * ver components/notes/NoteCanvas.tsx. Se renderiza siempre dentro de un
+ * contenedor de la misma proporción, así que no hace falta forzar un
+ * lienzo cuadrado para evitar distorsión. `p` es la
+ * presión del lápiz (PointerEvent.pressure), casi siempre un valor fijo
+ * en esta tablet sin lápiz con presión real; se guarda igual para no
+ * cerrar la puerta si algún día hay uno. `t` es el tiempo relativo (ms)
+ * desde el inicio del trazo -- sin uso hoy, deja abierta una futura
+ * conversión trazo -> texto sin recapturar nada. */
+export interface RawStrokePoint {
+  x: number;
+  y: number;
+  p: number;
+  t: number;
+}
+
+export interface RawStroke {
+  points: RawStrokePoint[];
+  /** Ancho de línea normalizado como fracción del ancho del lienzo donde
+   * se dibujó (no px absolutos) -- multiplicar por el ancho de destino al
+   * renderizar, igual que x/y. Ver lib/strokes.ts. */
+  width: number;
+}
+
+export interface RawNote {
+  id: number;
+  created_at: string; // ISO 8601 UTC
+  strokes: RawStroke[];
 }
 
 export type SsePayload =

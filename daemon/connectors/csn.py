@@ -21,7 +21,7 @@ import aiohttp
 
 import geocoding
 from config import Config
-from db import Writer
+from db import IngestResult, Writer
 from models import ParsedEvent
 
 logger = logging.getLogger(__name__)
@@ -86,7 +86,11 @@ async def run(config: Config, writer: Writer, stop_event: asyncio.Event) -> None
                     items = await resp.json(content_type=None)
             logger.debug("[%s] parsed response body: %d item(s)", SOURCE, len(items))
 
-            written = 0
+            # The feed re-sends its whole current list every poll, so most
+            # items are UNCHANGED re-deliveries the deduplicator drops
+            # without touching the DB. Count what was actually written, per
+            # IngestResult, instead of counting every item handed over.
+            created = updated = unchanged = 0
             for item in items:
                 try:
                     source_event_id = _source_event_id(item)
@@ -96,17 +100,30 @@ async def run(config: Config, writer: Writer, stop_event: asyncio.Event) -> None
                         SOURCE,
                         source_event_id,
                     )
-                    await writer.write_report(SOURCE, source_event_id, item, parsed)
+                    result = await writer.write_report(SOURCE, source_event_id, item, parsed)
                     logger.debug(
-                        "[%s] wrote report %s after DB write",
+                        "[%s] wrote report %s after DB write (%s)",
                         SOURCE,
                         source_event_id,
+                        result.value,
                     )
-                    written += 1
+                    if result is IngestResult.CREATED:
+                        created += 1
+                    elif result is IngestResult.UPDATED:
+                        updated += 1
+                    else:
+                        unchanged += 1
                 except Exception:
                     logger.exception("[%s] failed to parse item: %s", SOURCE, item)
 
-            logger.info("[%s] wrote %d new event(s) this cycle", SOURCE, written)
+            logger.info(
+                "[%s] cycle done: %d in feed -> %d new, %d revised, %d unchanged",
+                SOURCE,
+                len(items),
+                created,
+                updated,
+                unchanged,
+            )
             await writer.mark_source_ok(SOURCE)
         except asyncio.CancelledError:
             raise

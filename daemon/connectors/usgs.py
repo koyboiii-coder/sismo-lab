@@ -22,7 +22,7 @@ from typing import Optional
 import aiohttp
 
 from config import Config
-from db import Writer
+from db import IngestResult, Writer
 from dedup import CHILE_BBOX as _CHILE_BBOX
 from models import ParsedEvent
 
@@ -219,7 +219,10 @@ async def run(config: Config, writer: Writer, stop_event: asyncio.Event) -> None
                 )
 
                 seen_ids = set()
-                written = 0
+                # The moving window re-serves the same events every poll, so
+                # most are UNCHANGED re-deliveries the deduplicator drops.
+                # Count what was actually written, per IngestResult.
+                created = updated = unchanged = 0
                 for feature in global_features + chile_features:
                     source_event_id = feature.get("id")
                     if not source_event_id or source_event_id in seen_ids:
@@ -229,14 +232,26 @@ async def run(config: Config, writer: Writer, stop_event: asyncio.Event) -> None
                         parsed = parse(feature)
                         if parsed.magnitude is not None and parsed.magnitude >= FINITE_FAULT_MIN_MAGNITUDE:
                             parsed.rupture_geometry = await fetch_rupture_geometry(session, feature)
-                        await writer.write_report(SOURCE, source_event_id, feature, parsed)
-                        written += 1
+                        result = await writer.write_report(SOURCE, source_event_id, feature, parsed)
+                        if result is IngestResult.CREATED:
+                            created += 1
+                        elif result is IngestResult.UPDATED:
+                            updated += 1
+                        else:
+                            unchanged += 1
                     except Exception:
                         logger.exception(
                             "[%s] failed to parse feature %s", SOURCE, source_event_id
                         )
 
-            logger.info("[%s] wrote %d new event(s) this cycle", SOURCE, written)
+            logger.info(
+                "[%s] cycle done: %d in feed -> %d new, %d revised, %d unchanged",
+                SOURCE,
+                len(seen_ids),
+                created,
+                updated,
+                unchanged,
+            )
             await writer.mark_source_ok(SOURCE)
         except asyncio.CancelledError:
             raise

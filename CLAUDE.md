@@ -38,9 +38,16 @@ web/        Next.js. Dashboard. Diseño ya definido (ver docs/design/).
 infra/      docker-compose, Caddy, systemd, healthchecks.
 ```
 
-Base de datos: PostgreSQL 16. El daemon escribe, la API solo lee.
-Comunicación daemon → API: `LISTEN/NOTIFY` de Postgres sobre el canal
-`seismic_events`. Sin broker adicional.
+Base de datos: PostgreSQL 16. **Para el pipeline sísmico** (`events`,
+`event_reports`, `source_health`): el daemon escribe, la API solo lee --
+un solo escritor evita carreras entre la deduplicación y cualquier otra
+cosa que quisiera tocar esas tablas al mismo tiempo. Esto NO es una regla
+general de "la API nunca escribe": dominios sin relación con la ingesta
+(p. ej. `notes`, la pizarra de notas manuscritas -- ver sección
+"Frontend") no tienen ese riesgo de carrera y la API puede escribirlos
+directo. Comunicación daemon → API para el pipeline sísmico:
+`LISTEN/NOTIFY` de Postgres sobre el canal `seismic_events`. Sin broker
+adicional.
 
 ---
 
@@ -503,15 +510,26 @@ decisiones no obvias que se hayan tomado.
   real, magnitud/distancia/MMI a medias es mejor que la pantalla en
   blanco de Next. El fallback recibe `evento` por prop, no lo lee del
   subárbol que falló.
-- **`sentidoEnLaZona` (badge "SENTIDO EN LA ZONA" en `EventRow.tsx`) ahora
-  exige `enChile(evento)` además de M≥4.0.** La lista de columna B mezcla
-  actividad nacional con sismos mundiales M6.5+ (CLAUDE.md, "sin alerta
-  local" -- ver `EVENTOS_BASE` en fixtures, que ya incluye dos de esos).
-  Sin el filtro, cualquier evento mundial grande mostraba la etiqueta
-  como si fuera relevante (caso real: M en Afganistán, 16.700 km, MMI I
-  aquí). "Zona" se refiere al entorno del epicentro, no a HOME, pero un
-  evento fuera de Chile no es una "zona" que este dashboard pueda
-  interpretar.
+- **El badge de la lista (`EventRow.tsx`) pasó de "SENTIDO EN LA ZONA" a
+  "SENTIDO AQUÍ", con un criterio distinto** (sesión posterior, feedback
+  real en tablet). La regla anterior (M≥4.0 + `enChile(evento)`, sin
+  mirar la distancia a HOME -- ver la entrada original más abajo) seguía
+  siendo engañosa: un M4+ en Melipilla, a cientos de km de Coihueco,
+  encendía la etiqueta igual que un sismo realmente sentido en casa, y la
+  misma fila mostraba "MMI I AQUÍ" al lado, contradiciéndose. Ahora usa
+  `esSentido` (MMI en HOME ≥ III) -- el mismo criterio que ya resalta la
+  fila (barra, magnitud y distancia en `--tinta`) -- una sola fuente de
+  verdad para "esto se sintió en casa", no dos reglas distintas
+  conviviendo.
+- **Entrada original de esa decisión (ya no describe el código actual,
+  se deja por historial): `sentidoEnLaZona` exigía `enChile(evento)`
+  además de M≥4.0.** La lista de columna B mezcla actividad nacional con
+  sismos mundiales M6.5+ (CLAUDE.md, "sin alerta local" -- ver
+  `EVENTOS_BASE` en fixtures, que ya incluye dos de esos). Sin el filtro,
+  cualquier evento mundial grande mostraba la etiqueta como si fuera
+  relevante (caso real: M en Afganistán, 16.700 km, MMI I aquí). "Zona"
+  se refería al entorno del epicentro, no a HOME, pero un evento fuera de
+  Chile no era una "zona" que este dashboard pudiera interpretar.
 - **Layout angosto (~1200-1920px, solo para revisar en un navegador de
   escritorio -- el target sigue siendo 1920×1200 fijo en la tablet):**
   `--ancho-col-mapa`/`--ancho-col-estado` (`theme/tokens.css`) pasaron de
@@ -533,3 +551,58 @@ decisiones no obvias que se hayan tomado.
   (handoff §5.1) sin cambiar la hora del sistema, para poder revisar el
   diseño a brillo pleno en desarrollo. Sin el parámetro decide el reloj
   real, igual que antes.
+
+### Decisiones no obvias — primera prueba en tablet real: legibilidad, salud del sistema, viewport (sesión posterior a fase 3)
+
+- **La escala tipográfica del handoff (§2) asumía un panel físico más
+  grande a 1920px CSS que el real.** La Tab M11 es de 11": a 1920px CSS
+  eso da ~0.12mm por px (contra ~0.27mm/px de un monitor de escritorio
+  típico a esa misma resolución lógica), casi 3 veces más denso. "20px"
+  de texto de dato, calibrado en la maqueta de referencia, resultaba
+  ilegible a 3-4m en el hardware real -- solo la cifra de magnitud
+  (288px en alerta) resultaba legible, consistente con que a esa escala
+  sí correspondía a un tamaño físico razonable (~35mm). Subida la escala
+  de la columna de eventos (la que se lee 99% del tiempo) en
+  `EventList.module.css`/`LastFeltBlock.module.css`/`TopBar.module.css`
+  (~1.3-1.4x en los textos de dato), `--alto-fila-evento` de 90 a 132px
+  (`theme/tokens.css`), y `FILAS_VISIBLES` de 8 a 6 (`EventList.tsx`) --
+  menos densidad a cambio de legibilidad real, como se pidió. La columna
+  de estado (400px, más angosta) subió más moderado (~1.15-1.25x) para
+  no forzar truncamiento. Las pantallas de alerta/aviso (ya con cifras
+  grandes) no se tocaron en esta pasada; quedan pendientes de una
+  revisión si aún se ven chicas en algún texto secundario.
+- **Salud de fuente por cadencia esperada, no un mismo umbral para las
+  tres.** `GET /api/config` ahora expone `source_cadence_s` (`CSN: 300`,
+  `USGS: 60`, `EMSC: null` -- mismos nombres de env var que
+  `daemon/config.py`, declarados también en el `api` de
+  `docker-compose.yml` para que no puedan desincronizarse si se tunean).
+  `lib/derive.ts:saludFuente()` compara elapsed-since-`last_success_at`
+  contra esa cadencia (×2 = atrasado, ×4 = falla) -- `EMSC` (WebSocket,
+  push) usa cadencia `null` y su salud depende solo de `status`
+  (conectado/no), nunca de hace cuánto llegó el último mensaje: puede
+  llevar horas sin sismos y estar perfectamente sana. `SourceHealth.tsx`
+  y `TopBar.tsx` (que duplicaban su propio `colorEstado`) ahora comparten
+  este juicio vía `colorSaludFuente()`, y el tiempo crudo se muestra con
+  `haceTiempo()` (mismo helper que ya usaba la lista de eventos) en vez
+  de segundos crudos.
+- **El tercer estado de salud es gris, no rojo.** El pedido original era
+  "verde/ámbar/rojo", pero la paleta cerrada (§2 del handoff, invariante
+  de este archivo) reserva `--alerta` (rojo) exclusivamente para "evento
+  sísmico significativo, nunca error, nunca decorativo". Se usa
+  `--tinta-4` (el mismo gris que ya representaba "sin dato") para
+  "fuente caída" -- confirmado explícitamente con el usuario en vez de
+  romper la regla en silencio.
+- **Viewport de Android**: `app/layout.tsx` fijaba `width: 1920` pero no
+  `initialScale`/`minimumScale`/`maximumScale` -- sin ellos, el WebView
+  de la tablet no siempre calculaba un viewport de layout de 1920px CSS
+  (caía en un default más chico, ~980px, forzando scroll horizontal).
+  "Versión de escritorio" se veía bien solo porque ese modo del
+  navegador fija su propio ancho de viewport por su cuenta, sin pasar
+  por esta meta tag -- enmascaraba el bug en vez de confirmarlo
+  resuelto. Los tres fijados a 1 explícitamente; `web/README.md`
+  documenta el ajuste de respaldo en Fully Kiosk si algún WebView los
+  ignora igual.
+- **Pendiente de esta sesión**: puntos 4 (interacción táctil, "modo
+  exploración") y 5 (pizarra de notas manuscritas) del pedido quedaron
+  como propuesta de diseño, sin implementar -- a la espera de
+  confirmación explícita antes de tocar código, tal como se pidió.

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { AlertErrorBoundary } from "@/components/alert/AlertErrorBoundary";
 import { AlertLayout } from "@/components/alert/AlertLayout";
 import { AvisoPopup } from "@/components/alert/AvisoPopup";
+import { BuildBadge } from "@/components/BuildBadge";
 import { ErrorState } from "@/components/error/ErrorState";
 import { NormalLayout } from "@/components/layout/NormalLayout";
 import { EVENTO_ALERTA_FIXTURE, REPORTES_ALERTA_FIXTURE } from "@/fixtures/events";
@@ -12,6 +13,7 @@ import { construirEscenario, esNombreEscenario } from "@/fixtures/scenarios";
 import { useAvisoMachine } from "@/state/useAvisoMachine";
 import { useClock } from "@/state/useClock";
 import { useEventDetail } from "@/state/useEventDetail";
+import { useExploreMode } from "@/state/useExploreMode";
 import { useLiveEvents, type LiveEventsState } from "@/state/useLiveEvents";
 import { useNightMode } from "@/state/useNightMode";
 import type { RawEventReport } from "@/lib/types";
@@ -61,6 +63,10 @@ export function Dashboard() {
     : live;
 
   const aviso = useAvisoMachine(datos.eventos48h, silencioNocturno);
+  // Modo exploración deshabilitado mientras nivel 3 está activo (popup o
+  // ya en alerta 1b): un toque ahí es para esa pantalla, no para entrar a
+  // explorar -- ver useExploreMode.ts.
+  const exploracion = useExploreMode(aviso.nivel === 3);
 
   const clusterKeyDetalle = !escenario && aviso.nivel === 3 ? aviso.evento?.cluster_key ?? null : null;
   const reportesLive = useEventDetail(clusterKeyDetalle);
@@ -82,10 +88,12 @@ export function Dashboard() {
   if (conexionCaida || errorCargaInicial) {
     return (
       <div className={styles.pantalla}>
+        <BuildBadge />
         <ErrorState
           ahora={ahora}
           ultimoPaqueteEn={datos.ultimoPaqueteEn}
           health={datos.health}
+          sourceCadenceS={datos.config?.source_cadence_s ?? null}
           homeLat={home?.lat ?? null}
           homeLon={home?.lon ?? null}
           homeLabel={home?.label ?? "Ubicación"}
@@ -100,6 +108,7 @@ export function Dashboard() {
     // fabricada mientras se espera el primer /api/config.
     return (
       <div className={styles.pantalla}>
+        <BuildBadge />
         <span className={styles.cargando}>CONECTANDO…</span>
       </div>
     );
@@ -107,9 +116,18 @@ export function Dashboard() {
 
   return (
     <div className={styles.pantalla}>
+      <BuildBadge />
       {aviso.nivel === 3 && !aviso.enAlerta && aviso.evento ? (
         <>
-          <NormalLayout datos={datos} aviso={aviso} ahora={ahora} homeLat={home.lat} homeLon={home.lon} homeLabel={home.label} />
+          <NormalLayout
+            datos={datos}
+            aviso={aviso}
+            ahora={ahora}
+            homeLat={home.lat}
+            homeLon={home.lon}
+            homeLabel={home.label}
+            exploracion={exploracion}
+          />
           <AvisoPopup
             evento={aviso.evento}
             eventosRelacionados={datos.eventos48h}
@@ -125,7 +143,15 @@ export function Dashboard() {
           <AlertLayout evento={aviso.evento} reportes={reportes} homeLat={home.lat} homeLon={home.lon} ahora={ahora} />
         </AlertErrorBoundary>
       ) : (
-        <NormalLayout datos={datos} aviso={aviso} ahora={ahora} homeLat={home.lat} homeLon={home.lon} homeLabel={home.label} />
+        <NormalLayout
+          datos={datos}
+          aviso={aviso}
+          ahora={ahora}
+          homeLat={home.lat}
+          homeLon={home.lon}
+          homeLabel={home.label}
+          exploracion={exploracion}
+        />
       )}
     </div>
   );

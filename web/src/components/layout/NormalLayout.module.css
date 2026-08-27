@@ -1,7 +1,16 @@
 .cuerpo {
   flex: 1;
   display: grid;
-  grid-template-columns: var(--ancho-col-mapa) 1fr var(--ancho-col-estado);
+  /* minmax(0, 1fr), no 1fr a secas -- mismo motivo que AlertLayout.module.css
+     (ver su comentario): un 1fr sin minmax se dimensiona desde el
+     min-content de lo que haya adentro (colB/EventList), no desde el
+     espacio realmente disponible. min-width:0 en .colB no bastó para
+     evitarlo en el WebView de Android real (Fully Kiosk): el layout
+     completo terminaba más ancho que 1920px, empujando la columna de
+     estado fuera de pantalla -- confirmado en tablet real, no solo en
+     desktop. minmax(0, 1fr) fuerza el mínimo del track a 0 sin depender
+     de cómo cada motor resuelva el mínimo automático. */
+  grid-template-columns: var(--ancho-col-mapa) minmax(0, 1fr) var(--ancho-col-estado);
   overflow: hidden;
   min-height: 0;
 }

@@ -10,7 +10,7 @@ import {
   MMI_ALERTA_COMPLETA,
   MAGNITUD_MUNDIAL,
 } from "./constants";
-import type { FuenteId, RawEvent, RawEventReport } from "./types";
+import type { FuenteId, RawEvent, RawEventReport, RawHealthDetail } from "./types";
 
 const ORDEN_FUENTES: FuenteId[] = ["CSN", "USGS", "EMSC"];
 
@@ -187,6 +187,70 @@ export function haceTiempo(isoUtc: string, ahoraMs: number = Date.now()): string
   if (diffH < 24) return `HACE ${diffH} H`;
   const diffD = Math.round(diffH / 24);
   return `HACE ${diffD} ${diffD === 1 ? "DÍA" : "DÍAS"}`;
+}
+
+/** Cuántas cadencias esperadas de la fuente toleramos antes de bajar de
+ * nivel -- ver saludFuente. Valores elegidos para que un sondeo perdido
+ * ocasional (jitter de red) no dispare ámbar de inmediato, pero sin
+ * dejar pasar tanto que "atrasado" se vuelva indistinguible de "sano". */
+const CADENCIA_MULT_ATRASADO = 2;
+const CADENCIA_MULT_FALLA = 4;
+
+/** Fallas consecutivas (source_health.consecutive_failures) a partir de
+ * las cuales la fuente pasa de "atrasado" a "falla": ya no es un tropiezo
+ * puntual, lleva varios ciclos sin responder. */
+const FALLAS_CONSECUTIVAS_FALLA = 3;
+
+export type SaludFuente = "ok" | "atrasado" | "falla";
+
+/** Juicio de salud por fuente. Señal primaria: el estado ACTUAL que
+ * reporta el backend -- `status` y `consecutive_failures` de
+ * `source_health`, refrescados en cada sondeo del daemon (y por SSE). Un
+ * error histórico ya recuperado deja `consecutive_failures` en 0 y
+ * `status` en "ok": no cuenta como falla actual. `last_error_at` /
+ * `last_error` son solo informativos, nunca deciden el color.
+ *
+ * Señal secundaria: para fuentes con cadencia de sondeo conocida (CSN
+ * ~300s, USGS ~60s -- ver GET /api/config `source_cadence_s`), avisar si
+ * hace demasiado que no hay un sondeo exitoso aunque el backend todavía
+ * no lo haya contabilizado como error. No es un mismo umbral fijo para
+ * las tres: "ÚLT. OK HACE 320 S" es sano para CSN y tardío para USGS.
+ * `cadenciaS` null (EMSC, push por WebSocket) se salta este chequeo --
+ * puede llevar horas sin mensajes y estar perfectamente sana; su salud
+ * depende solo de `status`. */
+export function saludFuente(
+  detalle: RawHealthDetail | undefined,
+  cadenciaS: number | null | undefined,
+  ahoraMs: number = Date.now(),
+): SaludFuente {
+  if (!detalle || detalle.status === "unknown") return "falla";
+
+  // --- Señal primaria: estado actual del backend ---
+  const fallas = detalle.consecutive_failures ?? 0;
+  if (fallas >= FALLAS_CONSECUTIVAS_FALLA) return "falla";
+  // `status === "degraded"` es exactamente `consecutive_failures > 0` del
+  // lado del backend; se contempla igual por si un evento SSE compacto
+  // trajo el status nuevo pero el conteo quedó de un /api/health previo.
+  if (fallas > 0 || detalle.status === "degraded") return "atrasado";
+
+  // --- Señal secundaria: cadencia de sondeo (solo fuentes con polling) ---
+  if (cadenciaS != null && detalle.last_success_at) {
+    const elapsedS = (ahoraMs - new Date(detalle.last_success_at).getTime()) / 1000;
+    if (elapsedS > cadenciaS * CADENCIA_MULT_FALLA) return "falla";
+    if (elapsedS > cadenciaS * CADENCIA_MULT_ATRASADO) return "atrasado";
+  }
+
+  return "ok";
+}
+
+/** Color del juicio de saludFuente. Nunca `--alerta` (rojo): esa es la
+ * paleta cerrada del handoff §2 -- "rojo = evento sísmico significativo,
+ * nunca error, nunca decorativo". Una fuente caída usa el mismo gris de
+ * "sin dato" que ya existía (`--tinta-4`), no un cuarto color nuevo. */
+export function colorSaludFuente(salud: SaludFuente): string {
+  if (salud === "ok") return "var(--nominal)";
+  if (salud === "atrasado") return "var(--degradado)";
+  return "var(--tinta-4)";
 }
 
 /** "72 h 14 min" -- handoff §3.2, racha sin sismos sentibles. */

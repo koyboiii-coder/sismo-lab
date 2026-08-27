@@ -44,7 +44,14 @@
 .cuerpo {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 720px;
+  /* minmax(0, 1fr), no 1fr a secas: sin el 0 explícito, el ancho mínimo
+     automático de la columna se calcula desde su contenido (la cifra de
+     magnitud a 288px y el MMI a 104px son "palabras" no partibles); con
+     revisiones que empujan más texto (nota de saturación, frase MMI larga)
+     esa columna terminaba pidiendo más ancho del disponible y el resto se
+     recortaba contra el borde derecho, ya que .cuerpo también tiene
+     overflow:hidden. */
+  grid-template-columns: minmax(0, 1fr) 720px;
   overflow: hidden;
   min-height: 0;
 }
@@ -54,6 +61,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-6);
+  min-width: 0;
   overflow: hidden;
   border-right: var(--divisor-fuerte) solid var(--div-fuerte);
 }
@@ -62,12 +70,14 @@
   display: flex;
   align-items: flex-start;
   gap: var(--sp-8);
+  min-width: 0;
 }
 
 .bloqueMagnitud {
   display: flex;
   align-items: baseline;
   gap: var(--sp-3);
+  flex-shrink: 0;
 }
 
 .etiquetaM {
@@ -87,6 +97,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
+  flex: 1 1 auto;
+  min-width: 0;
   max-width: 460px;
 }
 
@@ -100,7 +112,9 @@
 .filaMmi {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: var(--sp-3);
+  min-width: 0;
 }
 
 .cifraMmi {
@@ -122,6 +136,7 @@
   font-weight: 600;
   color: var(--tinta-2);
   text-wrap: pretty;
+  overflow-wrap: break-word;
 }
 
 .notaSaturada {
@@ -129,6 +144,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--degradado);
+  overflow-wrap: break-word;
 }
 
 .cajaPreliminar {

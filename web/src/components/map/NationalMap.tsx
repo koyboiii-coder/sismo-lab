@@ -1,57 +1,88 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type MouseEvent } from "react";
 import { colorPorProfundidad, diametroPorMagnitud } from "@/lib/constants";
-import { sinUbicar } from "@/lib/derive";
+import { enChile, sinUbicar } from "@/lib/derive";
 import type { RawEvent } from "@/lib/types";
 import { chilePath, MAPA_ALTO, MAPA_ANCHO, proyectar } from "./projection";
 import styles from "./NationalMap.module.css";
-
-const HISTOGRAMA_ANCHO = 64;
-const HISTOGRAMA_BANDAS = 14;
 
 export function NationalMap({
   eventos,
   homeLat,
   homeLon,
+  explorando = false,
+  onSeleccionarEvento,
 }: {
   eventos: RawEvent[];
   homeLat: number;
   homeLon: number;
+  /** Modo exploración (ver state/useExploreMode.ts). */
+  explorando?: boolean;
+  onSeleccionarEvento?: (clusterKey: string) => void;
 }) {
-  const ubicables = useMemo(() => eventos.filter((e) => !sinUbicar(e)), [eventos]);
+  // enChile, no solo "tiene coordenadas": eventos48h es el log GLOBAL (USGS
+  // y sobre todo EMSC no filtran por Chile -- ver CLAUDE.md, fuentes de
+  // datos), así que sin este filtro el mapa nacional terminaba dibujando
+  // también la sismicidad mundial de las últimas 48h (cientos de eventos
+  // reales, no un bug de datos) encima de Chile. La cabecera del panel
+  // (MapColumn.tsx) ya contaba solo los de Chile; el mapa ahora cuenta lo
+  // mismo que muestra esa cifra.
+  const ubicables = useMemo(() => eventos.filter((e) => !sinUbicar(e) && enChile(e)), [eventos]);
   const homePos = proyectar(homeLat, homeLon);
   const path = useMemo(() => chilePath(), []);
 
-  const bandas = useMemo(() => {
-    const conteos = new Array(HISTOGRAMA_BANDAS).fill(0);
+  /**
+   * Un solo listener en el <svg>, no un círculo invisible por punto: en
+   * la tablet real, tocar un punto seguía abriendo un "detalle" vacío --
+   * el objetivo de toque de cada punto (antes, un <circle> transparente
+   * de 44px) dependía de que el mapeo de coordenadas de pantalla a
+   * unidades del viewBox fuera 1:1, algo que no se puede asumir bajo
+   * cualquier configuración de zoom/escala del WebView (Fully Kiosk
+   * permite fijar su propio initial-scale y tamaño de fuente por
+   * separado de esta página). getScreenCTM().inverse() traduce el punto
+   * de toque real a coordenadas del viewBox sin importar ese factor de
+   * escala externo, y de ahí se busca el evento más cercano -- así
+   * "tocar cerca de un punto" siempre resuelve a ALGÚN evento en vez de,
+   * si el toque cae unos px al lado, no tocar nada.
+   */
+  function alTocarMapa(evt: MouseEvent<SVGSVGElement>) {
+    if (!explorando || ubicables.length === 0 || !onSeleccionarEvento) return;
+    const svg = evt.currentTarget;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    const punto = svg.createSVGPoint();
+    punto.x = evt.clientX;
+    punto.y = evt.clientY;
+    const local = punto.matrixTransform(ctm.inverse());
+
+    let mejor: RawEvent | null = null;
+    let mejorDist = Infinity;
     for (const e of ubicables) {
-      const y = proyectar(e.latitude!, e.longitude!)?.[1];
-      if (y == null) continue;
-      const indice = Math.min(
-        HISTOGRAMA_BANDAS - 1,
-        Math.max(0, Math.floor((y / MAPA_ALTO) * HISTOGRAMA_BANDAS)),
-      );
-      conteos[indice] += 1;
+      const pos = proyectar(e.latitude!, e.longitude!);
+      if (!pos) continue;
+      const dx = pos[0] - local.x;
+      const dy = pos[1] - local.y;
+      const dist = dx * dx + dy * dy;
+      if (dist < mejorDist) {
+        mejorDist = dist;
+        mejor = e;
+      }
     }
-    const max = Math.max(1, ...conteos);
-    return conteos.map((n, i) => ({
-      n,
-      y: (i / HISTOGRAMA_BANDAS) * MAPA_ALTO,
-      alto: MAPA_ALTO / HISTOGRAMA_BANDAS - 1,
-      anchoPx: (n / max) * HISTOGRAMA_ANCHO,
-    }));
-  }, [ubicables]);
+    if (mejor) onSeleccionarEvento(mejor.cluster_key);
+  }
 
   return (
     <div className={styles.contenedor}>
       <div className={styles.lienzo}>
         <svg
-          width={MAPA_ANCHO}
-          height={MAPA_ALTO}
+          className={styles.mapaSvg}
           viewBox={`0 0 ${MAPA_ANCHO} ${MAPA_ALTO}`}
+          preserveAspectRatio="xMidYMid meet"
           role="img"
           aria-label="Mapa de actividad sísmica nacional"
+          onClick={explorando ? alTocarMapa : undefined}
+          style={explorando ? { cursor: "pointer" } : undefined}
         >
           <path d={path} fill="var(--fondo-lienzo)" stroke="var(--div-fuerte)" strokeWidth={1} />
           {ubicables.map((e) => {
@@ -82,28 +113,6 @@ export function NationalMap({
               stroke="var(--tinta)"
               strokeWidth={2}
             />
-          )}
-        </svg>
-
-        <svg
-          className={styles.histograma}
-          width={HISTOGRAMA_ANCHO}
-          height={MAPA_ALTO}
-          aria-hidden
-        >
-          {bandas.map(
-            (b, i) =>
-              b.n > 0 && (
-                <rect
-                  key={i}
-                  x={0}
-                  y={b.y}
-                  width={b.anchoPx}
-                  height={b.alto}
-                  fill="var(--degradado)"
-                  fillOpacity={0.75}
-                />
-              ),
           )}
         </svg>
       </div>

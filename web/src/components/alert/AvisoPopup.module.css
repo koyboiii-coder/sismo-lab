@@ -9,9 +9,16 @@
 }
 
 .ventana {
-  position: absolute;
-  left: 230px;
-  top: 180px;
+  /* Antes position:absolute con top fijo, y .notasPie con su propio top
+     fijo más abajo -- dos cajas independientes que asumían una altura de
+     .ventana constante. La altura real depende del contenido (texto de
+     réplicas, frase MMI, etc.), así que con contenido más alto el pie de
+     .ventana (el botón) terminaba invadiendo el top fijo de .notasPie:
+     "TOCAR PARA CERRAR AHORA" se solapaba con "NO ES ALERTA TEMPRANA".
+     Ahora .ventana y .notasPie fluyen en el flex column de .velo, así que
+     .notasPie siempre queda justo debajo del borde real de .ventana. */
+  flex-shrink: 0;
+  margin-top: 180px;
   width: 1460px;
   background: var(--panel);
   border: 2px solid var(--alerta);
@@ -201,15 +208,15 @@
 }
 
 .notasPie {
-  position: absolute;
-  top: 840px;
-  left: 230px;
+  flex-shrink: 0;
+  margin-top: var(--sp-6);
   width: 1460px;
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
   border-top: 2px solid var(--div-fuerte);
   padding-top: var(--sp-4);
+  padding-bottom: var(--sp-5);
 }
 
 .notaAmbar {

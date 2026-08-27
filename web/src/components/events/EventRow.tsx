@@ -1,6 +1,5 @@
 import { colorPorProfundidad } from "@/lib/constants";
 import {
-  enChile,
   esSentido,
   haceTiempo,
   horaCortaCLT,
@@ -21,28 +20,20 @@ const BARRA_COLOR: Record<1 | 2 | 3 | 4, string> = {
   4: "var(--barra-4)",
 };
 
-/** Heurística documentada: sin señal de "sentido en la zona" reportada por
- * usuarios, se usa M>=4.0 como umbral de percepción típica cerca del
- * epicentro (no depende de la distancia a HOME). Sí se restringe a eventos
- * en Chile: la lista mezcla actividad nacional con sismos mundiales M6.5+
- * (CLAUDE.md, "sin alerta local"), y "zona" nunca se pensó para esos --
- * un M6.7 en Japón no dice nada sobre si algo se sintió en Coihueco. Sin
- * este filtro la etiqueta aparecía en cualquier evento mundial grande
- * (ej. Afganistán a 16.700 km, MMI I aquí) como si fuera relevante. */
-function sentidoEnLaZona(e: RawEvent): boolean {
-  return enChile(e) && (e.magnitude ?? 0) >= 4.0;
-}
-
 export function EventRow({
   evento,
   magnitudMaxVisible,
   homeLat,
   homeLon,
+  explorando = false,
+  onAbrir,
 }: {
   evento: RawEvent;
   magnitudMaxVisible: number;
   homeLat: number;
   homeLon: number;
+  explorando?: boolean;
+  onAbrir?: (clusterKey: string) => void;
 }) {
   const sentido = esSentido(evento);
   const peso = pesoSeveridad(evento, magnitudMaxVisible);
@@ -52,7 +43,13 @@ export function EventRow({
   const mmiTexto = mmiRomano(evento.estimated_mmi);
 
   return (
-    <div className={`${styles.fila} ${sentido ? styles.filaDestacada : ""}`}>
+    <div
+      className={`${styles.fila} ${sentido ? styles.filaDestacada : ""}`}
+      style={explorando ? { cursor: "pointer" } : undefined}
+      onClick={explorando ? () => onAbrir?.(evento.cluster_key) : undefined}
+      role={explorando ? "button" : undefined}
+      aria-label={explorando ? `Ver detalle de ${evento.region ?? "evento"}` : undefined}
+    >
       <div
         className={styles.barraSeveridad}
         style={{ background: sentido ? "var(--tinta)" : BARRA_COLOR[peso] }}
@@ -70,7 +67,13 @@ export function EventRow({
       <div className={styles.colLugar}>
         <div className={styles.lugarLinea}>
           <span className={styles.lugar}>{sinUbicacion ? "SIN UBICAR" : evento.region ?? "REGIÓN DESCONOCIDA"}</span>
-          {sentidoEnLaZona(evento) && <span className={styles.etiquetaZona}>SENTIDO EN LA ZONA</span>}
+          {/* Antes: "M >= 4.0 en cualquier parte de Chile" (sin relación
+              con la distancia a HOME) -- un M4+ en Melipilla, a cientos de
+              km de Coihueco, se marcaba igual que un sismo realmente
+              sentido acá. `sentido` (MMI en HOME, el mismo criterio que ya
+              resalta la fila) es lo único que debería encender esta
+              etiqueta. */}
+          {sentido && <span className={styles.etiquetaZona}>SENTIDO AQUÍ</span>}
         </div>
         <span className={styles.metadato}>
           {(evento.region ?? "SIN REGIÓN").toUpperCase()} · {evento.preferred_source} ·{" "}

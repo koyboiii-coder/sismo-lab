@@ -1,16 +1,10 @@
 "use client";
 
-import { fechaLargaCLT, horaCLT } from "@/lib/derive";
+import { colorSaludFuente, fechaLargaCLT, horaCLT, saludFuente } from "@/lib/derive";
 import type { FuenteId, RawHealth } from "@/lib/types";
 import styles from "./TopBar.module.css";
 
 const FUENTES: FuenteId[] = ["CSN", "USGS", "EMSC"];
-
-function colorEstado(status: RawHealth[FuenteId]["status"] | undefined): string {
-  if (status === "ok") return "var(--nominal)";
-  if (status === "degraded") return "var(--degradado)";
-  return "var(--tinta-4)";
-}
 
 export function TopBar({
   ahora,
@@ -18,6 +12,7 @@ export function TopBar({
   homeLat,
   homeLon,
   health,
+  sourceCadenceS,
 }: {
   ahora: Date;
   ubicacionLabel: string;
@@ -27,6 +22,7 @@ export function TopBar({
   homeLat: number | null;
   homeLon: number | null;
   health: RawHealth | null;
+  sourceCadenceS: Record<FuenteId, number | null> | null;
 }) {
   const ubicacionTexto =
     homeLat != null && homeLon != null
@@ -46,7 +42,7 @@ export function TopBar({
           <span key={f} className={styles.fuente}>
             <span
               className={styles.puntoFuente}
-              style={{ background: colorEstado(health?.[f]?.status) }}
+              style={{ background: colorSaludFuente(saludFuente(health?.[f], sourceCadenceS?.[f], ahora.getTime())) }}
               aria-hidden
             />
             {f}

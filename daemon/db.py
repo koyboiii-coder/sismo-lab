@@ -5,6 +5,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from typing import Optional
 
 import asyncpg
@@ -19,6 +20,18 @@ logger = logging.getLogger(__name__)
 
 
 NOTIFY_CHANNEL = "seismic_events"
+
+
+class IngestResult(str, Enum):
+    """What `Writer.ingest` actually did with a report -- so connectors can
+    log "wrote N" honestly instead of counting every item they handed over.
+    A polled feed (CSN, USGS) re-sends its whole current list every cycle,
+    so the vast majority of reports are UNCHANGED re-deliveries that never
+    touch the DB."""
+
+    CREATED = "created"      # opened a brand-new events cluster
+    UPDATED = "updated"      # inserted a report into an existing cluster
+    UNCHANGED = "unchanged"  # duplicate re-delivery, nothing written
 
 
 async def _notify(conn: asyncpg.Connection, kind: str, cluster_key: uuid.UUID) -> None:
@@ -121,7 +134,7 @@ class Writer:
         source_event_id: str,
         payload: dict,
         parsed: ParsedEvent,
-    ) -> None:
+    ) -> IngestResult:
         if self.dry_run:
             print(
                 json.dumps(
@@ -145,9 +158,9 @@ class Writer:
                     default=str,
                 )
             )
-            return
+            return IngestResult.CREATED
 
-        await self.ingest(
+        return await self.ingest(
             source, source_event_id, payload, parsed, datetime.now(timezone.utc)
         )
 
@@ -158,12 +171,13 @@ class Writer:
         payload: dict,
         parsed: ParsedEvent,
         received_at: datetime,
-    ) -> None:
+    ) -> IngestResult:
         """Core dedup/clustering path, shared by live ingestion
         (`write_report`, `received_at=now()`) and `reprocess.py` (replays
         history with each report's original `received_at`)."""
         assert self._pool is not None
         pending_notification: Optional[dict] = None
+        result = IngestResult.UNCHANGED
         async with self._write_lock:
             async with self._pool.acquire() as conn:
                 async with conn.transaction():
@@ -188,7 +202,7 @@ class Writer:
                                 source,
                                 source_event_id,
                             )
-                            return
+                            return IngestResult.UNCHANGED
                         event_id = existing["event_id"]
                     else:
                         event_id = await self._find_cluster_match(conn, parsed)
@@ -197,6 +211,7 @@ class Writer:
                         pending_notification = await self._create_event(
                             conn, source, source_event_id, payload, parsed, received_at
                         )
+                        result = IngestResult.CREATED
                     else:
                         previous = await conn.fetchrow(
                             "SELECT alert_level_sent, alert_sent_at FROM events "
@@ -210,12 +225,14 @@ class Writer:
                             conn, event_id, source,
                             previous["alert_level_sent"], previous["alert_sent_at"],
                         )
+                        result = IngestResult.UPDATED
         # Sent only after the transaction above has committed -- an ntfy
         # POST isn't transactional/revocable like the pg_notify() inside it
         # is, so it must never fire for a write that could still roll back.
         # See _send_alert and Writer.alerts_enabled.
         if pending_notification is not None:
             await self._send_alert(pending_notification)
+        return result
 
     async def _create_event(
         self,

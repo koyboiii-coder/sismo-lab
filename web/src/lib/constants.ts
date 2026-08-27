@@ -33,6 +33,18 @@ export const NOCHE_FIN_HORA = 7;
 export const SSE_BACKOFF_INICIAL_MS = 1000;
 export const SSE_BACKOFF_MAXIMO_MS = 30_000;
 
+/**
+ * Modo exploración (puntos 4/5 del feedback post-tablet, ver CLAUDE.md) --
+ * único punto de entrada táctil del dashboard, fuera del requisito de
+ * diseño "sin interacción" (handoff §1). Presión larga, no un tap: un
+ * roce contra la pared no debe sacar el dashboard de su estado normal.
+ */
+export const EXPLORACION_PRESION_LARGA_MS = 800;
+export const EXPLORACION_INACTIVIDAD_S = 120;
+/** Gracia extra, avisada, antes de descartar una nota con trazos sin
+ * guardar -- escribir a mano toma más que mirar un mapa. */
+export const EXPLORACION_AVISO_DESCARTE_S = 30;
+
 /** handoff §3.2 -- radio de círculo por magnitud, en px de diámetro. */
 export const RADIO_POR_MAGNITUD: { magnitudMin: number; diametroPx: number }[] = [
   { magnitudMin: 2, diametroPx: 8 },

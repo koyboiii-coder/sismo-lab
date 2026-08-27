@@ -10,7 +10,7 @@ from config import load_config
 from db import Database
 from notifier import SEISMIC_CHANNEL, Broadcaster, make_notify_callback
 from routers import config as config_router
-from routers import events, health, stream
+from routers import events, health, notes, stream, version
 
 config = load_config()
 logging.basicConfig(
@@ -44,7 +44,10 @@ app = FastAPI(title="Sismos API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.cors_origins,
-    allow_methods=["GET"],
+    # POST/DELETE agregados solo para /api/notes -- único endpoint de
+    # escritura de la API (ver routers/notes.py, CLAUDE.md "Arquitectura").
+    # Todo lo demás sigue siendo GET.
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -52,3 +55,5 @@ app.include_router(events.router, prefix="/api")
 app.include_router(health.router, prefix="/api")
 app.include_router(stream.router, prefix="/api")
 app.include_router(config_router.router, prefix="/api")
+app.include_router(version.router, prefix="/api")
+app.include_router(notes.router, prefix="/api")

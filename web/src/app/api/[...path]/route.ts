@@ -33,12 +33,18 @@ function apiInternalUrl(): string {
   return process.env.API_INTERNAL_URL ?? "http://localhost:8000";
 }
 
-export async function GET(req: NextRequest, context: { params: Promise<{ path: string[] }> }) {
+async function proxy(req: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
   const target = `${apiInternalUrl()}/api/${path.join("/")}${req.nextUrl.search}`;
 
+  const hasBody = req.method !== "GET" && req.method !== "DELETE";
   const upstream = await fetch(target, {
-    headers: { accept: req.headers.get("accept") ?? "*/*" },
+    method: req.method,
+    headers: {
+      accept: req.headers.get("accept") ?? "*/*",
+      ...(hasBody ? { "content-type": req.headers.get("content-type") ?? "application/json" } : {}),
+    },
+    body: hasBody ? await req.text() : undefined,
     signal: req.signal,
     cache: "no-store",
   });
@@ -50,3 +56,11 @@ export async function GET(req: NextRequest, context: { params: Promise<{ path: s
 
   return new Response(upstream.body, { status: upstream.status, headers });
 }
+
+// GET (todo lo demás: eventos, salud, config, stream) y POST/DELETE
+// (/api/notes -- ver CLAUDE.md "Arquitectura", único dominio con
+// escritura directa desde la API) pasan por el mismo reenvío: el body y
+// el método se retransmiten tal cual, sin interpretarlos acá.
+export const GET = proxy;
+export const POST = proxy;
+export const DELETE = proxy;

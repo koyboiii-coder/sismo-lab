@@ -14,8 +14,18 @@ export const metadata: Metadata = {
 };
 
 // Fijo a 1920x1200: pantalla de pared, no responsive (handoff §1).
+// initialScale/minimumScale/maximumScale son necesarios, no solo width: sin
+// ellos, el WebView de Android (Fully Kiosk incluido) no siempre respeta
+// width=1920 como viewport de layout -- calculaba uno propio (más chico) y
+// forzaba scroll horizontal. "Versión de escritorio" del navegador se veía
+// bien porque ese modo fija su propio ancho de viewport por su cuenta,
+// enmascarando el bug. Fijar los tres explícitamente a 1 elimina la
+// ambigüedad para cualquier WebView.
 export const viewport: Viewport = {
   width: 1920,
+  initialScale: 1,
+  minimumScale: 1,
+  maximumScale: 1,
   userScalable: false,
 };
 

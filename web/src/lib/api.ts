@@ -6,7 +6,7 @@
  * "localhost" (el device del propio navegador) ni al hostname interno
  * "api" (solo resuelve dentro de Docker) por error de configuración.
  */
-import type { RawConfig, RawEvent, RawEventDetail, RawHealth } from "./types";
+import type { RawConfig, RawEvent, RawEventDetail, RawHealth, RawNote, RawStroke } from "./types";
 
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(path, { cache: "no-store" });
@@ -39,4 +39,26 @@ export function fetchHealth(): Promise<RawHealth> {
 
 export function fetchConfig(): Promise<RawConfig> {
   return getJson<RawConfig>("/api/config");
+}
+
+/** Único dominio de la API con escritura directa (no pasa por el daemon):
+ * las notas manuscritas no tienen relación con el pipeline sísmico -- ver
+ * CLAUDE.md, "Arquitectura". */
+export function fetchNotes(limit = 20): Promise<RawNote[]> {
+  return getJson<RawNote[]>(`/api/notes?limit=${limit}`);
+}
+
+export async function createNote(strokes: RawStroke[]): Promise<RawNote> {
+  const res = await fetch("/api/notes", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ strokes }),
+  });
+  if (!res.ok) throw new Error(`POST /api/notes -> ${res.status}`);
+  return res.json() as Promise<RawNote>;
+}
+
+export async function deleteNote(id: number): Promise<void> {
+  const res = await fetch(`/api/notes/${id}`, { method: "DELETE" });
+  if (!res.ok && res.status !== 404) throw new Error(`DELETE /api/notes/${id} -> ${res.status}`);
 }

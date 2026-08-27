@@ -10,9 +10,9 @@
 }
 
 .titulo {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--tinta-3);
   min-width: 0;
@@ -23,9 +23,9 @@
 }
 
 .dato {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--tinta-4);
   flex-shrink: 0;
   white-space: nowrap;

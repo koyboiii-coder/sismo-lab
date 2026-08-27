@@ -28,6 +28,13 @@ services:
     build:
       context: ../daemon
       dockerfile: Dockerfile
+      args:
+        # Ver infra/deploy.sh -- así GET /api/version (y `docker exec ...
+        # env`) reportan qué commit corre de verdad, no solo qué hay en el
+        # árbol fuente. Sin `deploy.sh` de por medio, ${GIT_SHA:-unknown}
+        # cae en "unknown" -- no falla el build por esto.
+        GIT_SHA: ${GIT_SHA:-unknown}
+        BUILT_AT: ${BUILT_AT:-unknown}
     platform: linux/arm64
     restart: unless-stopped
     environment:
@@ -65,6 +72,12 @@ services:
       # exige por su cuenta, para quien corra el daemon fuera de compose).
       HOME_LAT: ${HOME_LAT:?falta HOME_LAT en infra/.env}
       HOME_LON: ${HOME_LON:?falta HOME_LON en infra/.env}
+      # Sin override acá -> daemon/config.py usa sus defaults (300/60).
+      # Declarados explícitos para que, si se tunean en infra/.env, api
+      # (abajo) no pueda quedar con un valor distinto y el dashboard juzgue
+      # la salud de la fuente contra una cadencia que ya no es la real.
+      CSN_POLL_INTERVAL_S: ${CSN_POLL_INTERVAL_S:-300}
+      USGS_POLL_INTERVAL_S: ${USGS_POLL_INTERVAL_S:-60}
     volumes:
       - ./postgres/init:/migrations:ro
     depends_on:
@@ -123,6 +136,9 @@ services:
     build:
       context: ../api
       dockerfile: Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+        BUILT_AT: ${BUILT_AT:-unknown}
     platform: linux/arm64
     restart: unless-stopped
     environment:
@@ -133,6 +149,10 @@ services:
       HOME_LAT: ${HOME_LAT:?falta HOME_LAT en infra/.env}
       HOME_LON: ${HOME_LON:?falta HOME_LON en infra/.env}
       HOME_LABEL: ${HOME_LABEL:-Casa}
+      # Mismos valores que `daemon` arriba -- ver ese comentario. GET
+      # /api/config los expone como source_cadence_s para el dashboard.
+      CSN_POLL_INTERVAL_S: ${CSN_POLL_INTERVAL_S:-300}
+      USGS_POLL_INTERVAL_S: ${USGS_POLL_INTERVAL_S:-60}
     ports:
       - "8000:8000"
     depends_on:
@@ -150,6 +170,9 @@ services:
     build:
       context: ../web
       dockerfile: Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+        BUILT_AT: ${BUILT_AT:-unknown}
     platform: linux/arm64
     restart: unless-stopped
     environment:

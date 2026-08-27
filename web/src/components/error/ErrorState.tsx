@@ -11,6 +11,7 @@ export function ErrorState({
   ahora,
   ultimoPaqueteEn,
   health,
+  sourceCadenceS,
   homeLat,
   homeLon,
   homeLabel,
@@ -18,6 +19,7 @@ export function ErrorState({
   ahora: Date;
   ultimoPaqueteEn: number | null;
   health: RawHealth | null;
+  sourceCadenceS: Record<FuenteId, number | null> | null;
   homeLat: number | null;
   homeLon: number | null;
   homeLabel: string;
@@ -27,7 +29,14 @@ export function ErrorState({
   return (
     <>
       <div className={styles.barraGris}>
-        <TopBar ahora={ahora} ubicacionLabel={homeLabel} homeLat={homeLat} homeLon={homeLon} health={health} />
+        <TopBar
+          ahora={ahora}
+          ubicacionLabel={homeLabel}
+          homeLat={homeLat}
+          homeLon={homeLon}
+          health={health}
+          sourceCadenceS={sourceCadenceS}
+        />
       </div>
       <div className={styles.cuerpo}>
         <span className={styles.sinDatoCifra}>{sinDatoMs != null ? duracionHoraMin(sinDatoMs) : "—"}</span>

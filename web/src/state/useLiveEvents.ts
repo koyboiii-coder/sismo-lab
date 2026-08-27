@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { fetchConfig, fetchEvents, fetchHealth, fetchSignificantEvents } from "@/lib/api";
-import { VENTANA_EVENTOS_HORAS } from "@/lib/constants";
+import { POLL_INTERVAL_S_DEFAULT, VENTANA_EVENTOS_HORAS } from "@/lib/constants";
 import { SseConexion, type SseEstado } from "@/lib/sse";
 import type { RawConfig, RawEvent, RawHealth, RawHealthCompact } from "@/lib/types";
 
@@ -92,6 +92,23 @@ export function useLiveEvents(enabled: boolean = true): LiveEventsState {
         });
     }, RESYNC_INTERVAL_MS);
 
+    // El evento SSE "health" es compacto (solo status, sin marcas de
+    // tiempo ni consecutive_failures -- ver mapHealthCompact). Sin este
+    // re-fetch, last_success_at quedaría congelado en el valor de la carga
+    // inicial y saludFuente terminaría marcando "falla" por cadencia en un
+    // dashboard que lleva horas abierto, aunque la fuente esté sana.
+    const healthId = setInterval(() => {
+      fetchHealth()
+        .then((salud) => {
+          if (!cancelado) setHealth(salud);
+        })
+        .catch(() => {
+          // Igual que el resync de eventos: una falla de este poll no es
+          // una caída del sistema (eso lo refleja connEstado). Se reintenta
+          // al siguiente tick.
+        });
+    }, POLL_INTERVAL_S_DEFAULT * 1000);
+
     const sse = new SseConexion("/api/stream", {
       onSeismic: (msg) => setEventos((prev) => upsertTodos(prev, [msg.event])),
       onHealth: (h) => setHealth((prev) => mapHealthCompact(h, prev)),
@@ -106,6 +123,7 @@ export function useLiveEvents(enabled: boolean = true): LiveEventsState {
     return () => {
       cancelado = true;
       clearInterval(resyncId);
+      clearInterval(healthId);
       sse.cerrar();
     };
   }, [enabled]);

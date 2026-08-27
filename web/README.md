@@ -59,6 +59,19 @@ Sin `?escenario=`, la página usa datos en vivo: `GET /api/events` +
 /api/stream` (SSE) después, con reconexión automática con backoff
 exponencial (`src/lib/sse.ts`).
 
+### Tablet Android / Fully Kiosk
+
+`app/layout.tsx` fija `width=1920, initialScale=1, minimumScale=1,
+maximumScale=1` en el meta viewport para que el WebView calcule un
+viewport de layout de 1920px CSS en vez de su default (~980px, lo que
+forzaba scroll horizontal en la tablet real -- "versión de escritorio"
+se veía bien solo porque ese modo del navegador fija su propio ancho de
+viewport por su cuenta, sin pasar por esta meta tag). Si algún WebView
+igual la ignora, en Fully Kiosk Browser: **Web Content Settings → Force
+Viewport Meta / Desktop Site → desactivado**, y **Zoom Level → 100%**
+(no usar el zoom de la app para "hacer caber" la página: eso reescala
+todo el layout, incluida la tipografía ya calibrada para 1920px reales).
+
 ## Variables de entorno
 
 Ver `.env.example`. `API_INTERNAL_URL` es la única obligatoria: debe ser

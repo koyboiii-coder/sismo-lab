@@ -8,15 +8,27 @@
 
 .lienzo {
   position: relative;
+  /* flex:1 + min-height:0, no una altura implícita por contenido: el svg
+     de abajo se dimensiona a height:100% de este contenedor (ver
+     .mapaSvg) para poder centrarse mediante preserveAspectRatio en vez de
+     por aritmética de ancho fijo -- sin min-height:0 un flex column no
+     deja que este hijo se ajuste al espacio realmente disponible. */
+  flex: 1;
+  min-height: 0;
   display: flex;
   justify-content: center;
   background: var(--fondo-lienzo);
 }
 
-.histograma {
-  position: absolute;
-  right: 0;
-  top: 0;
+.mapaSvg {
+  /* width:auto (no un ancho fijo en px) es lo que permite que
+     preserveAspectRatio="xMidYMid meet" centre Chile de verdad dentro de
+     .lienzo -- con un ancho fijo, si .lienzo terminaba siendo más angosto
+     que ese ancho (por el padding de .contenedor, el borde de columna,
+     etc.) el mapa quedaba descentrado en vez de encogerse. */
+  height: 100%;
+  width: auto;
+  max-width: 100%;
 }
 
 .leyenda {
@@ -35,18 +47,18 @@
 }
 
 .leyendaEtiqueta {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   color: var(--tinta-4);
-  width: 90px;
+  width: 100px;
 }
 
 .leyendaItem {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--tinta-3);
 }

@@ -1,4 +1,4 @@
-import type { RawHealth, RawEvent } from "@/lib/types";
+import type { FuenteId, RawHealth, RawEvent } from "@/lib/types";
 import type { SseEstado } from "@/lib/sse";
 import { FeltHistory90d } from "./FeltHistory90d";
 import { SourceHealth } from "./SourceHealth";
@@ -11,6 +11,7 @@ export function StatusColumn({
   eventos48h,
   eventosSignificativos90d,
   health,
+  sourceCadenceS,
   connEstado,
   ultimoPaqueteEn,
   pollIntervalS,
@@ -19,6 +20,7 @@ export function StatusColumn({
   eventos48h: RawEvent[];
   eventosSignificativos90d: RawEvent[];
   health: RawHealth | null;
+  sourceCadenceS: Record<FuenteId, number | null> | null;
   connEstado: SseEstado;
   ultimoPaqueteEn: number | null;
   pollIntervalS: number;
@@ -26,7 +28,7 @@ export function StatusColumn({
 }) {
   return (
     <div className={styles.columna}>
-      <SourceHealth health={health} />
+      <SourceHealth health={health} sourceCadenceS={sourceCadenceS} ahora={ahora} />
       <WorldQuakes eventos={eventos48h} ahora={ahora} />
       <Summary48h eventos={eventos48h} />
       <FeltHistory90d eventos={eventosSignificativos90d} />

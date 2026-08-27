@@ -96,7 +96,7 @@ export function AlertLayout({
             <div className={styles.celdaPie}>
               <span className={styles.etiquetaCelda}>DISTANCIA</span>
               <span className={styles.valorCelda}>{km(evento.distance_km)}</span>
-              {rumbo && <span className={styles.subCelda}>{rumbo}</span>}
+              {rumbo && <span className={styles.subCelda}>AL {rumbo}</span>}
             </div>
             <div className={styles.celdaPie}>
               <span className={styles.etiquetaCelda}>PROFUNDIDAD</span>
