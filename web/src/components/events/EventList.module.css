@@ -179,6 +179,29 @@
   letter-spacing: 0.06em;
 }
 
+/* Banda de proximidad -- peldaño bajo "SENTIDO AQUÍ" para eventos que NO
+   cruzaron el umbral de intensidad pero cayeron cerca del epicentro (ver
+   derive.ts:bandaProximidad). Gris, más tenue que .etiquetaZona: es una
+   señal geográfica de contexto, no "esto se sintió". "CERCA" (banda
+   externa) más apagada que "MUY CERCA". */
+.etiquetaMuyCerca,
+.etiquetaCerca {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border: 1px solid currentColor;
+  letter-spacing: 0.06em;
+}
+
+.etiquetaMuyCerca {
+  color: var(--tinta-3);
+}
+
+.etiquetaCerca {
+  color: var(--tinta-4);
+}
+
 .colProfundidad {
   display: flex;
   align-items: center;

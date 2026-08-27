@@ -14,6 +14,24 @@ export const MAGNITUD_MUNDIAL = 6.5;
 /** Ventana de eventos "nacional" mostrada en columna A / lista principal. */
 export const VENTANA_EVENTOS_HORAS = 48;
 
+/**
+ * Banda de proximidad de la lista de eventos (EventRow) -- km EPICENTRALES
+ * desde HOME, no hipocentrales: importa dónde cayó el epicentro respecto a
+ * Coihueco, no la distancia a la energía (la profundidad ya la pondera
+ * `esSentido` vía el GMPE del backend, y penalizarla otra vez acá sacaría
+ * un sismo profundo del slab de Nazca justo debajo de un pueblo cercano de
+ * la banda). A diferencia de MMI_SILENCIOSO/MMI_ALERTA_COMPLETA, estos NO
+ * están espejados de ningún cálculo del backend: son solo de presentación.
+ * Es el peldaño bajo "SENTIDO AQUÍ" (MMI en HOME >= III), que ocupa el
+ * slot cuando el evento sí se sintió -- nunca conviven los dos.
+ *   muy-cerca: rango donde un evento cortical moderado sería plausiblemente
+ *              perceptible en HOME aunque este no lo haya sido.
+ *   cerca:     Ñuble + regiones colindantes; más allá, la cifra cruda de
+ *              distancia de la fila ya basta y la etiqueta no agrega nada.
+ */
+export const PROXIMIDAD_MUY_CERCA_KM = 150;
+export const PROXIMIDAD_CERCA_KM = 350;
+
 /** handoff §7: "Sondeo cada 30 s". */
 export const POLL_INTERVAL_S_DEFAULT = 30;
 

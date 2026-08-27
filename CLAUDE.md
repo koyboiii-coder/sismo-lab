@@ -606,3 +606,65 @@ decisiones no obvias que se hayan tomado.
   exploración") y 5 (pizarra de notas manuscritas) del pedido quedaron
   como propuesta de diseño, sin implementar -- a la espera de
   confirmación explícita antes de tocar código, tal como se pidió.
+
+### Decisiones no obvias — banda de proximidad en la lista de eventos (sesión posterior a fase 3)
+
+- **Ahora que la lista solo muestra eventos chilenos (`enChile` en
+  `EventList.tsx`), "es de Chile" ya no distingue nada.** Se agregó una
+  banda de proximidad como segundo peldaño bajo "SENTIDO AQUÍ" en
+  `EventRow.tsx`: `MUY CERCA` (≤150 km) / `CERCA` (≤350 km) / sin
+  etiqueta. Se descartó la alternativa de etiquetar por región
+  administrativa ("EN ÑUBLE" vía GeoJSON de las 16 regiones +
+  point-in-polygon): un sismo a 50 km del otro lado del límite regional
+  importa más que uno a 200 km dentro de Ñuble, el CSN no entrega región
+  (solo texto libre), y habría que mandar el GeoJSON a la tablet. La
+  proximidad usa un dato que ya existe y es lo que físicamente importa.
+- **Distancia EPICENTRAL, no `events.distance_km`.** `distance_km` es
+  hipocentral (`sqrt(epicentral² + prof²)`, ver `daemon/intensity.py`) y
+  para eventos profundos del slab de Nazca queda dominado por la
+  profundidad: caso real, "38 km al E de Antuco" (prof. 138 km) marca
+  `distance_km = 167 km` con el epicentro a solo ~93 km de Coihueco. La
+  banda mide dónde cayó el epicentro respecto a HOME; la profundidad ya
+  la pondera `esSentido` vía el GMPE del backend, penalizarla otra vez
+  acá sacaría de la banda un sismo prácticamente encima. La epicentral se
+  deriva en el cliente con haversine (`derive.ts:distanciaEpicentralKm`)
+  desde `HOME_LAT`/`HOME_LON` + `evento.latitude/longitude` -- mismos
+  inputs que `rumboDesdeHome`, cero cambios en backend.
+- **Escalera de un solo peldaño, nunca dos chips.** `esSentido` (MMI en
+  HOME ≥ III) y proximidad están correlacionados pero no son lo mismo: un
+  sismo hondo y chico puede caer a 60 km y no sentirse. `esSentido` ocupa
+  el slot con "SENTIDO AQUÍ" + el realce de fila completo; la banda solo
+  aplica cuando NO se sintió (`bandaProximidad` devuelve `null` si
+  `esSentido`). Chips grises (`--tinta-3` / `--tinta-4`), más tenues que
+  el ámbar de "SENTIDO AQUÍ" -- es contexto geográfico, no "esto se
+  sintió".
+- **Umbrales en `constants.ts` (`PROXIMIDAD_MUY_CERCA_KM` /
+  `PROXIMIDAD_CERCA_KM`), marcados como solo-presentación.** A diferencia
+  de `MMI_SILENCIOSO` etc., NO están espejados de ningún cálculo del
+  backend -- no hay un segundo lado que mantener en sync.
+- **Localizador relativo a HOME en la fila (`derive.ts:localizadorDesdeHome`,
+  "93 km al SE").** El `region` de un evento chileno es siempre el texto
+  libre del CSN ("38 km al E de Antuco") -- un topónimo chico que se
+  confunde fácil (hay un Antuco volcán en Biobío y localidades homónimas;
+  se confundió en una prueba real con Chiloé). En `EventRow` la segunda
+  línea de la columna LUGAR mostraba ese mismo texto repetido en
+  mayúsculas; ahora, para eventos ubicados, muestra la posición
+  epicentral relativa a HOME (distancia + rumbo, ambos ya se calculaban).
+  Para eventos `sinUbicar` se mantiene el texto del CSN: es la única
+  pista de lugar que hay. La cifra grande de la columna DISTANCIA sigue
+  siendo `distance_km` (hipocentral) -- puede no coincidir con el "93 km"
+  epicentral del localizador para eventos profundos, y está bien: son dos
+  cosas distintas (distancia a la energía vs. dónde cayó el epicentro).
+- **Región administrativa aproximada, solo en el detalle
+  (`EventDetailOverlay`), por latitud -- NO point-in-polygon.**
+  `derive.ts:regionAproxDeChile` corta por bandas de latitud (las 16
+  regiones de Chile son casi bandas puras); se rotula "Región aprox.:" en
+  la UI y, a <0.15° de un límite, nombra las dos ("Ñuble / Biobío"). Se
+  evaluó embarcar un GeoJSON de regiones + `d3.geoContains` (d3-geo ya es
+  dependencia): descartado por no encontrar una fuente admin-1 confiable y
+  liviana y porque el corte por latitud ya desambigua los casos reales
+  (Antuco→Biobío, Coihueco→Ñuble, Chiloé→Los Lagos). Se calcula solo para
+  el evento abierto, nunca para las filas -- mismo criterio que "N de 3
+  fuentes confirman" (derivación más cara solo para el evento activo).
+  `homeLabel` se hizo llegar por props NormalLayout → ExploreOverlay →
+  EventDetailOverlay para el texto "... de Coihueco".

@@ -107,6 +107,7 @@ export function NormalLayout({
         eventos={datos.eventos48h}
         homeLat={homeLat}
         homeLon={homeLon}
+        homeLabel={homeLabel}
       />
     </>
   );

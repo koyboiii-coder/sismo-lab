@@ -9,6 +9,8 @@ import {
   MMI_SILENCIOSO,
   MMI_ALERTA_COMPLETA,
   MAGNITUD_MUNDIAL,
+  PROXIMIDAD_MUY_CERCA_KM,
+  PROXIMIDAD_CERCA_KM,
 } from "./constants";
 import type { FuenteId, RawEvent, RawEventReport, RawHealthDetail } from "./types";
 
@@ -48,8 +50,111 @@ export function rumboDesdeHome(
   return COMPASS_8[index];
 }
 
+/**
+ * Distancia epicentral (great-circle sobre la superficie) de HOME a
+ * (lat, lon), en km. Deliberadamente NO es `events.distance_km`: esa es
+ * hipocentral (incluye la profundidad, `sqrt(epicentral^2 + prof^2)` --
+ * ver daemon/intensity.py). Para la banda de proximidad de la lista
+ * importa dónde cayó el epicentro respecto a Coihueco, no la distancia a
+ * la energía -- ver constants.ts:PROXIMIDAD_*.
+ */
+export function distanciaEpicentralKm(
+  homeLat: number,
+  homeLon: number,
+  lat: number,
+  lon: number,
+): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dPhi = toRad(lat - homeLat);
+  const dLambda = toRad(lon - homeLon);
+  const a =
+    Math.sin(dPhi / 2) ** 2 +
+    Math.cos(toRad(homeLat)) * Math.cos(toRad(lat)) * Math.sin(dLambda / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+/**
+ * "93 km al SE" -- localización epicentral RELATIVA A HOME. El `region`
+ * de los eventos chilenos es siempre el texto libre del CSN ("38 km al E
+ * de Antuco"): un topónimo chico que no todos ubican -- hay más de un
+ * "Antuco" en Chile. Anclarlo en distancia + rumbo desde casa desambigua
+ * sin pedir un dataset de comunas/regiones. Epicentral, no la
+ * `distance_km` hipocentral de la fila -- ver distanciaEpicentralKm.
+ */
+export function localizadorDesdeHome(
+  homeLat: number,
+  homeLon: number,
+  lat: number,
+  lon: number,
+): string {
+  const d = Math.round(distanciaEpicentralKm(homeLat, homeLon, lat, lon));
+  return `${d} km al ${rumboDesdeHome(homeLat, homeLon, lat, lon)}`;
+}
+
 export function sinUbicar(event: RawEvent): boolean {
   return event.latitude == null || event.longitude == null;
+}
+
+// ---------------------------------------------------------------------
+// Región administrativa aproximada -- SOLO para el detalle de un evento
+// (EventDetailOverlay), nunca para las filas de la lista. Las 16 regiones
+// de Chile son casi bandas de latitud puras; esto NO es point-in-polygon
+// (no se embarca un GeoJSON de regiones a la tablet -- CLAUDE.md rule 5)
+// sino un corte por latitud. Se rotula "aprox." en la UI: cerca de un
+// límite regional, sobre todo en la cordillera, puede errar por una. El
+// `region` real del evento es el texto libre del CSN ("38 km al E de
+// Antuco"); esto solo agrega el ancla país/región que a ese texto le
+// falta ("¿ese Antuco es el volcán o uno de Chiloé?").
+// ---------------------------------------------------------------------
+
+/** Límite SUR aproximado de cada región, en grados de latitud (negativos,
+ * de norte a sur). Cada región va desde el límite de la anterior hasta el
+ * suyo. Fuente: extensión latitudinal de cada región (INE/IGM), redondeada. */
+const REGIONES_POR_LATITUD: { hastaLat: number; nombre: string }[] = [
+  { hastaLat: -19.2, nombre: "Arica y Parinacota" },
+  { hastaLat: -21.6, nombre: "Tarapacá" },
+  { hastaLat: -26.05, nombre: "Antofagasta" },
+  { hastaLat: -29.4, nombre: "Atacama" },
+  { hastaLat: -32.25, nombre: "Coquimbo" },
+  { hastaLat: -33.2, nombre: "Valparaíso" },
+  { hastaLat: -34.3, nombre: "Región Metropolitana" },
+  { hastaLat: -35.0, nombre: "O'Higgins" },
+  { hastaLat: -36.0, nombre: "Maule" },
+  { hastaLat: -37.0, nombre: "Ñuble" },
+  { hastaLat: -38.5, nombre: "Biobío" },
+  { hastaLat: -39.6, nombre: "La Araucanía" },
+  { hastaLat: -40.65, nombre: "Los Ríos" },
+  { hastaLat: -44.0, nombre: "Los Lagos" },
+  { hastaLat: -49.3, nombre: "Aysén" },
+  { hastaLat: -90, nombre: "Magallanes" },
+];
+
+const REGION_NORTE_LAT = -17.5;
+/** Dentro de esta franja de un límite se nombran las dos regiones. */
+const LIMITE_ZONA_GRIS_DEG = 0.15;
+
+/**
+ * Región aproximada por latitud, o null fuera de Chile continental. A
+ * menos de LIMITE_ZONA_GRIS_DEG de un límite devuelve las dos
+ * ("Ñuble / Biobío") -- honesto sobre la incerteza del corte por latitud.
+ */
+export function regionAproxDeChile(lat: number, lon: number): string | null {
+  if (lat > REGION_NORTE_LAT || lat < -56 || lon < -76 || lon > -66) return null;
+  let limiteNorte = REGION_NORTE_LAT;
+  for (let i = 0; i < REGIONES_POR_LATITUD.length; i++) {
+    const { hastaLat, nombre } = REGIONES_POR_LATITUD[i];
+    if (lat >= hastaLat) {
+      const previa = i > 0 ? REGIONES_POR_LATITUD[i - 1].nombre : null;
+      const siguiente =
+        i < REGIONES_POR_LATITUD.length - 1 ? REGIONES_POR_LATITUD[i + 1].nombre : null;
+      if (previa && lat > limiteNorte - LIMITE_ZONA_GRIS_DEG) return `${previa} / ${nombre}`;
+      if (siguiente && lat < hastaLat + LIMITE_ZONA_GRIS_DEG) return `${nombre} / ${siguiente}`;
+      return nombre;
+    }
+    limiteNorte = hastaLat;
+  }
+  return null;
 }
 
 export function enChile(event: RawEvent): boolean {
@@ -81,6 +186,28 @@ export function mmiRomano(mmi: number | null): string | null {
 /** handoff §4/§5: "sentido" = intensidad estimada aquí en umbral de aviso silencioso o más. */
 export function esSentido(event: RawEvent): boolean {
   return event.estimated_mmi != null && event.estimated_mmi >= MMI_SILENCIOSO;
+}
+
+export type BandaProximidad = "muy-cerca" | "cerca";
+
+/**
+ * Peldaño único por fila (EventRow): `esSentido` (MMI en HOME >= III) ya
+ * ocupa el slot con "SENTIDO AQUÍ" y el realce de fila completo, así que
+ * la banda de proximidad solo aplica a eventos que NO se sintieron -- el
+ * caso "cayó cerca del epicentro pero no cruzó el umbral de intensidad"
+ * (hondo y/o chico). Devuelve null si el evento se sintió, no tiene
+ * ubicación, o su epicentro quedó más lejos que PROXIMIDAD_CERCA_KM.
+ */
+export function bandaProximidad(
+  event: RawEvent,
+  homeLat: number,
+  homeLon: number,
+): BandaProximidad | null {
+  if (esSentido(event) || sinUbicar(event)) return null;
+  const d = distanciaEpicentralKm(homeLat, homeLon, event.latitude!, event.longitude!);
+  if (d <= PROXIMIDAD_MUY_CERCA_KM) return "muy-cerca";
+  if (d <= PROXIMIDAD_CERCA_KM) return "cerca";
+  return null;
 }
 
 export function esMundial(event: RawEvent): boolean {

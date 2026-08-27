@@ -25,6 +25,7 @@ export function ExploreOverlay({
   eventos,
   homeLat,
   homeLon,
+  homeLabel,
 }: {
   exploracion: EstadoExploracion;
   vista: VistaExploracion;
@@ -33,6 +34,7 @@ export function ExploreOverlay({
   eventos: RawEvent[];
   homeLat: number;
   homeLon: number;
+  homeLabel: string;
 }) {
   const eventoSeleccionado = eventos.find((e) => e.cluster_key === clusterKeySeleccionado) ?? null;
 
@@ -71,6 +73,7 @@ export function ExploreOverlay({
             evento={eventoSeleccionado}
             homeLat={homeLat}
             homeLon={homeLon}
+            homeLabel={homeLabel}
             onVolver={() => onCambiarVista(null)}
           />
         </div>

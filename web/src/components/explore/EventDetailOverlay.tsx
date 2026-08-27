@@ -1,7 +1,17 @@
 "use client";
 
 import { ZoomMap } from "@/components/map/ZoomMap";
-import { descripcionMmi, fuentesConfirmantes, haceTiempo, horaCLT, km, magnitud, mmiRomano } from "@/lib/derive";
+import {
+  descripcionMmi,
+  fuentesConfirmantes,
+  haceTiempo,
+  horaCLT,
+  km,
+  localizadorDesdeHome,
+  magnitud,
+  mmiRomano,
+  regionAproxDeChile,
+} from "@/lib/derive";
 import type { RawEvent } from "@/lib/types";
 import { useEventDetail } from "@/state/useEventDetail";
 import styles from "./ExploreOverlay.module.css";
@@ -14,16 +24,28 @@ export function EventDetailOverlay({
   evento,
   homeLat,
   homeLon,
+  homeLabel,
   onVolver,
 }: {
   evento: RawEvent;
   homeLat: number;
   homeLon: number;
+  homeLabel: string;
   onVolver: () => void;
 }) {
   const reportes = useEventDetail(evento.cluster_key);
   const fuentes = reportes ? fuentesConfirmantes(reportes) : [];
   const mmiTexto = mmiRomano(evento.estimated_mmi);
+
+  // Ancla geográfica que al `region` del CSN ("38 km al E de Antuco") le
+  // falta: región administrativa aproximada (por latitud, ver
+  // regionAproxDeChile) + posición epicentral relativa a HOME. Solo para
+  // eventos ubicados -- sin coordenadas no hay ninguna de las dos.
+  const ubicado = evento.latitude != null && evento.longitude != null;
+  const regionAprox = ubicado ? regionAproxDeChile(evento.latitude!, evento.longitude!) : null;
+  const relativoAHome = ubicado
+    ? `${localizadorDesdeHome(homeLat, homeLon, evento.latitude!, evento.longitude!)} de ${homeLabel}`
+    : null;
 
   return (
     <div className={styles.panelGrande}>
@@ -35,6 +57,11 @@ export function EventDetailOverlay({
       </div>
       <div className={styles.detalleCuerpo}>
         <div className={styles.detalleDatos}>
+          {relativoAHome && (
+            <span className={styles.metaDetalle}>
+              {regionAprox ? `Región aprox.: ${regionAprox}` : "Fuera de Chile continental"} · {relativoAHome}
+            </span>
+          )}
           <div>
             <span className={styles.etiquetaDetalle}>MAGNITUD</span>
             <span className={styles.cifraDetalle}>M {magnitud(evento.magnitude)}</span>
